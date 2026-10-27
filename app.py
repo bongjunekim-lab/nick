@@ -1,12 +1,3 @@
-요청하신 모든 기능(**씨수말 관점 전수조사**, **외조부마 관점 분석**, **연결선(arrowlink) 기반 정밀 매칭**, **미상 표기 및 미상 항목 숨기기 체크박스**, **외조부마/부마 계통별 파스텔톤 닉 하이라이트 색상 구분**)을 하나의 깔끔한 Streamlit 애플리케이션으로 통합하여 완성했습니다.
-
-좌측 사이드바의 **관점 선택 라디오 버튼**과 **필터 옵션 체크박스**를 통해 원하시는 분석 모드로 즉시 전환하여 활용하실 수 있습니다.
-
-### 통합 완성된 전체 Python 코드 (`app.py`)
-
-기존 코드를 모두 지우고 아래 코드를 그대로 복사해서 붙여넣으신 후 실행하시면 됩니다.
-
-```python
 import streamlit as st
 import xml.etree.ElementTree as ET
 import re
@@ -367,5 +358,3 @@ else:
                     father_display = f"<b>{father_name}</b>"
                     
                 st.markdown(f"<div class='progeny-item'>🔗 [연결 자마] {child_display} (부마: {father_display})</div>", unsafe_allow_html=True)
-
-```
