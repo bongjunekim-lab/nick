@@ -45,16 +45,20 @@ st.markdown("""
 def load_mindmap_data():
     file_path = '우수한 경주마(수말, 암말).mm'
     if not os.path.exists(file_path):
-        return None, None, None, None, "파일을 찾을 수 없습니다."
+        return None, None, None, None, f"'{file_path}' 파일을 찾을 수 없습니다. 스크립트와 같은 경로에 파일을 위치시켜 주세요."
+    
     try:
-        tree = ET.parse(file_path)
-        root = tree.getroot()
+        # 인코딩 오류 및 BOM(Byte Order Mark) 문제를 방지하기 위해 utf-8-sig 사용
+        with open(file_path, 'r', encoding='utf-8-sig') as f:
+            content = f.read().strip()
+            if not content:
+                return None, None, None, None, f"'{file_path}' 파일의 내용이 비어 있습니다. (no element found)"
+            root = ET.fromstring(content)
         
         id_to_text = {}
         id_to_parent_text = {}
         id_to_node = {}
         
-        # 전체 노드 및 부모-자식 관계 인덱싱
         for parent in root.iter('node'):
             p_text = parent.get('TEXT', 'Unknown')
             for child in parent.findall('node'):
@@ -65,17 +69,15 @@ def load_mindmap_data():
                     id_to_node[c_id] = child
                     
         return root, id_to_text, id_to_parent_text, id_to_node, None
+    except ET.ParseError as pe:
+        return None, None, None, None, f"XML 파싱 오류 (파일 형식이 올바른지 확인하세요): {str(pe)}"
     except Exception as e:
         return None, None, None, None, f"파일 분석 오류: {str(e)}"
 
-# ---------------------------------------------------------
-# [1관점 핵심 로직] 정방향/역방향 arrowlink 및 트리 구조 양방향 전체 탐색
-# ---------------------------------------------------------
 def analyze_sire_perspective(root, target_sire_query, id_to_text, id_to_parent_text, id_to_node):
     query_norm = normalize_name(target_sire_query)
     results = []
 
-    # 1. 전체 마인드맵에서 화살표(arrowlink) 맵 구축 (출발 ID -> 도착 ID, 도착 ID -> 출발 ID)
     forward_arrows = defaultdict(list)
     backward_arrows = defaultdict(list)
     
@@ -93,25 +95,20 @@ def analyze_sire_perspective(root, target_sire_query, id_to_text, id_to_parent_t
         dam_name = "미상"
         bms_name = "미상"
 
-        # [방식 A] 자마 노드에서 출발하는 arrowlink 선 추적 (자마 -> 모마)
         target_dam_id = None
         if child_id in forward_arrows:
             target_dam_id = forward_arrows[child_id][0]
-        # [방식 B] 모마 노드에서 자마 노드로 들어오는 arrowlink 역추적 (모마 -> 자마)
         elif child_id in backward_arrows:
             target_dam_id = backward_arrows[child_id][0]
 
         if target_dam_id and target_dam_id in id_to_text:
             dam_name = id_to_text[target_dam_id]
-            # 모마의 상위 트리 노드 = 외조부마(BMS)
             bms_name = id_to_parent_text.get(target_dam_id, "미상")
             return dam_name, bms_name
 
-        # [방식 C] arrowlink 선이 없는 경우: 트리 구조상 상위 노드가 모마인지 확인
         parent_text = id_to_parent_text.get(child_id, "미상")
         if parent_text != "미상" and normalize_name(parent_text) != query_norm:
             dam_name = parent_text
-            # 모마 노드의 ID 찾기
             for p_id, p_text in id_to_text.items():
                 if p_text == parent_text:
                     bms_name = id_to_parent_text.get(p_id, "미상")
@@ -119,7 +116,6 @@ def analyze_sire_perspective(root, target_sire_query, id_to_text, id_to_parent_t
 
         return dam_name, bms_name
 
-    # 씨수말 노드 탐색 및 하위 자마 추적
     def traverse(node):
         my_text = node.get('TEXT', '')
         if query_norm in normalize_name(my_text):
@@ -169,7 +165,6 @@ sire_data = analyze_sire_perspective(root_node, search_sire, id_to_text, id_to_p
 if not sire_data:
     st.warning("조건에 맞는 자마 데이터가 없습니다.")
 else:
-    # 2회 이상 매칭된 주요 외조부마(Nick BMS) 집계
     bms_counts = defaultdict(int)
     for item in sire_data:
         if item['bms'] != "미상":
