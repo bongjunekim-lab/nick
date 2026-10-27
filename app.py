@@ -150,7 +150,7 @@ def analyze_sire_perspective(root, target_sire_query, id_to_text, id_to_parent_t
     return results
 
 # -------------------------------------------------------------------------
-# [관점 2] 외조부마 관점: 직계 딸("암)" 표기)들의 자마 & 교배 부마 닉 분석
+# [관점 2] 외조부마 관점: 직계 딸("암)" 표기)들의 자마 & 교배 부마 닉 분석 (중복 제거 보완)
 # -------------------------------------------------------------------------
 def analyze_bms_perspective(root, target_sire_query, id_to_text, id_to_parent_text):
     query_norm = normalize_name(target_sire_query)
@@ -164,13 +164,22 @@ def analyze_bms_perspective(root, target_sire_query, id_to_text, id_to_parent_te
                 if '암)' in child_text:
                     progeny_list = []
                     seen_ids = set()
+                    seen_combos = set()  # 자마 이름 + 부마 이름 중복 방지 세트
+                    
                     for arrow in child.findall('arrowlink'):
                         dest_id = arrow.get('DESTINATION')
                         if dest_id in id_to_text and dest_id not in seen_ids:
                             c_text = id_to_text[dest_id]
                             f_text = id_to_parent_text.get(dest_id, "정보 없음")
-                            progeny_list.append({'child': c_text, 'father': f_text})
+                            
+                            # 고유 조합 키 생성하여 완전 중복 차단
+                            combo_key = (c_text.strip(), f_text.strip())
+                            if combo_key not in seen_combos:
+                                progeny_list.append({'child': c_text, 'father': f_text})
+                                seen_combos.add(combo_key)
+                                
                             seen_ids.add(dest_id)
+                            
                     if progeny_list:
                         results.append({
                             'daughter': child_text.strip(),
