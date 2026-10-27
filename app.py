@@ -74,6 +74,7 @@ def analyze_sire_perspective(root, target_sire_query, id_to_text, id_to_parent_t
     query_norm = normalize_name(target_sire_query)
     results = []
 
+    # 오직 실제 존재하는 화살표(arrowlink) 관계만 수집
     forward_arrows = defaultdict(list)
     backward_arrows = defaultdict(list)
     
@@ -87,46 +88,30 @@ def analyze_sire_perspective(root, target_sire_query, id_to_text, id_to_parent_t
                 forward_arrows[src_id].append(dest_id)
                 backward_arrows[dest_id].append(src_id)
 
-    def find_dam_and_bms(child_node, child_id):
+    def find_dam_and_bms(child_node, child_id, sire_name_raw):
         dam_name = "미상"
         bms_name = "미상"
 
-        # 1. 자마 노드에 연결된 화살표(arrowlink) 확인
         target_dam_id = None
+        # 정방향 또는 역방향으로 명확한 화살표 선(arrowlink)이 연결된 경우에만 인정
         if child_id in forward_arrows:
             target_dam_id = forward_arrows[child_id][0]
         elif child_id in backward_arrows:
             target_dam_id = backward_arrows[child_id][0]
 
         if target_dam_id and target_dam_id in id_to_text:
-            dam_name = id_to_text[target_dam_id]
+            potential_dam = id_to_text[target_dam_id]
+            # 만약 연결된 대상이 씨수말 본인 이름과 유사하다면 잘못된 연결이므로 미상 처리
+            if query_norm in normalize_name(potential_dam):
+                return "미상", "미상"
+            
+            dam_name = potential_dam
             bms_name = id_to_parent_text.get(target_dam_id, "미상")
-            if not bms_name or bms_name == "Unknown":
+            if not bms_name or bms_name == "Unknown" or query_norm in normalize_name(bms_name):
                 bms_name = "미상"
             return dam_name, bms_name
 
-        # 2. 화살표가 없는 경우 부모-자식 트리 구조에서 모마 찾기
-        parent_text = id_to_parent_text.get(child_id, "미상")
-        if parent_text and parent_text != "Unknown" and normalize_name(parent_text) != query_norm:
-            dam_name = parent_text
-            for p_id, p_text in id_to_text.items():
-                if p_text == parent_text:
-                    bms_name = id_to_parent_text.get(p_id, "미상")
-                    if not bms_name or bms_name == "Unknown":
-                        bms_name = "미상"
-                    break
-            return dam_name, bms_name
-
-        # 3. 자마 노드 자체의 텍스트나 하위/인접 구조에서 모마가 명시된 경우 추가 탐색
-        child_text = child_node.get('TEXT', '')
-        for p_id, p_text in id_to_text.items():
-            if child_text in p_text and p_text != child_text:
-                dam_name = p_text
-                bms_name = id_to_parent_text.get(p_id, "미상")
-                if not bms_name or bms_name == "Unknown":
-                    bms_name = "미상"
-                return dam_name, bms_name
-
+        # 화살표 선(arrowlink)이 없는 경우 상위 트리 구조나 텍스트 유추를 배제하고 엄격하게 "미상" 처리
         return dam_name, bms_name
 
     def traverse(node):
@@ -138,7 +123,7 @@ def analyze_sire_perspective(root, target_sire_query, id_to_text, id_to_parent_t
                 if not child_text:
                     continue
 
-                dam_name, bms_name = find_dam_and_bms(child, child_id)
+                dam_name, bms_name = find_dam_and_bms(child, child_id, my_text)
                 
                 results.append({
                     'progeny': child_text.strip(),
