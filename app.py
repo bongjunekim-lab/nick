@@ -145,10 +145,16 @@ if err:
 
 # 사이드바 설정
 st.sidebar.header("🔍 씨수말 검색 설정")
-search_sire = st.sidebar.text_input("씨수말 이름을 입력하세요", placeholder="예: 디프임팩트, 딥임팩트 등")
+search_sire = st.sidebar.text_input("씨수말 이름을 입력하세요", placeholder="예: 버나딘, 디프임팩트 등")
+
+# 분석 옵션 체크박스 추가
+st.sidebar.markdown("---")
+st.sidebar.markdown("### 📊 분석 옵션")
+show_nick_highlight = st.sidebar.checkbox("중복 교배(Nick) 부마 하이라이트 분석", value=True)
+show_sire_bms_depth = st.sidebar.checkbox("혈통상 모계 깊이(부마 BMS) 동시 비교", value=False)
 
 if not search_sire.strip():
-    st.info("👈 좌측 사이드바에 검색하고 싶은 씨수말 이름을 입력해 주세요.")
+    st.info("👈 좌측 사이드바에 검색하고 싶은 씨수말 이름을 입력해 주세요. (예: 버나딘)")
     st.stop()
 
 # 데이터 조회
@@ -159,7 +165,7 @@ if not search_results:
     st.stop()
 
 # -------------------------------------------------------------
-# [3조건] 교배 부마(Father)들의 등장 횟수를 미리 집계하여 중복 부마 식별 및 배경색 매핑
+# 교배 부마(Father)들의 등장 횟수를 미리 집계하여 닉 부마 식별 및 배경색 매핑
 # -------------------------------------------------------------
 father_counts = defaultdict(int)
 g1_pattern = re.compile(r'G1-(\d+)')
@@ -172,7 +178,7 @@ for item in search_results:
 # 2회 이상 중복 등장한 부마(Nick Sires)
 nick_sires = [father for father, count in father_counts.items() if count >= 2 and father != "정보 없음"]
 
-# 파스텔톤 팔레트 설정 (기존 코드 디자인 보존)
+# 파스텔톤 팔레트 설정
 bg_palette = ["#FFEBEE", "#E0F2F1", "#F3E5F5", "#E8F5E9", "#FBE9E7", "#FFFDE7", "#E1F5FE"]
 border_palette = ["#D32F2F", "#00796B", "#7B1FA2", "#388E3C", "#E64A19", "#FBC02D", "#0288D1"]
 
@@ -181,16 +187,17 @@ for idx, ns in enumerate(nick_sires):
     nick_style_map[ns] = (border_palette[idx % len(border_palette)], bg_palette[idx % len(bg_palette)])
 
 # 상단 결과 요약 뷰
+display_target_sire = clean_name_symbols(search_sire)
 st.markdown(f"""
 <div class='info-box'>
-    <b>검색 키워드:</b> <span style='color:#0077CC;'>{search_sire}</span> | 
-    <b>조건 충족 딸(암말):</b> 총 {len(search_results)}두 | 
-    <b>중복 교배(Nick) 부마 수:</b> <span style='color:#D32F2F;'>{len(nick_sires)}두</span>
+    <b>검색 대상 씨수말:</b> <span style='color:#0077CC; font-size:1.1em; font-weight:bold;'>{display_target_sire}</span> | 
+    <b>조건 충족 직계 딸(종빈마):</b> 총 {len(search_results)}두 | 
+    <b>중복 교배(Nick) 부마 수:</b> <span style='color:#D32F2F; font-weight:bold;'>{len(nick_sires)}두</span>
 </div>
 """, unsafe_allow_html=True)
 
-# 중복 교배 부마 범례(Legend) 표시
-if nick_sires:
+# 중복 교배 부마 범례(Legend) 표시 (체크박스가 켜져 있을 때만)
+if show_nick_highlight and nick_sires:
     st.subheader("🎨 중복 교배 부마(Nick) 하이라이트 범례")
     legend_html = "<div style='display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 20px;'>"
     for ns in nick_sires:
@@ -227,8 +234,8 @@ for idx, item in enumerate(search_results, 1):
         else:
             child_display = child_name
 
-        # [3조건 적용] 부마 스타일링 (중복 부마는 색상 배경 박스 적용)
-        if father_name in nick_style_map:
+        # 부마 스타일링 (중복 부마 하이라이트 적용)
+        if show_nick_highlight and father_name in nick_style_map:
             b_c, bg_c = nick_style_map[father_name]
             father_display = f"<span style='color:{b_c}; background-color:{bg_c}; font-weight:bold; padding:2px 8px; border-radius:4px; border:1px solid {b_c}80;'>{father_name}</span>"
         else:
