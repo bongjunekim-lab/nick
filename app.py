@@ -34,10 +34,6 @@ st.markdown("""
         border-radius: 8px;
         margin-bottom: 15px;
     }
-    .bms-highlight {
-        color: #0000FF;
-        font-weight: bold;
-    }
     </style>
 """, unsafe_allow_html=True)
 
@@ -74,7 +70,6 @@ def analyze_sire_perspective(root, target_sire_query, id_to_text, id_to_parent_t
     query_norm = normalize_name(target_sire_query)
     results = []
 
-    # 오직 실제 존재하는 화살표(arrowlink) 관계만 수집
     forward_arrows = defaultdict(list)
     backward_arrows = defaultdict(list)
     
@@ -93,7 +88,6 @@ def analyze_sire_perspective(root, target_sire_query, id_to_text, id_to_parent_t
         bms_name = "미상"
 
         target_dam_id = None
-        # 정방향 또는 역방향으로 명확한 화살표 선(arrowlink)이 연결된 경우에만 인정
         if child_id in forward_arrows:
             target_dam_id = forward_arrows[child_id][0]
         elif child_id in backward_arrows:
@@ -101,7 +95,6 @@ def analyze_sire_perspective(root, target_sire_query, id_to_text, id_to_parent_t
 
         if target_dam_id and target_dam_id in id_to_text:
             potential_dam = id_to_text[target_dam_id]
-            # 만약 연결된 대상이 씨수말 본인 이름과 유사하다면 잘못된 연결이므로 미상 처리
             if query_norm in normalize_name(potential_dam):
                 return "미상", "미상"
             
@@ -111,7 +104,6 @@ def analyze_sire_perspective(root, target_sire_query, id_to_text, id_to_parent_t
                 bms_name = "미상"
             return dam_name, bms_name
 
-        # 화살표 선(arrowlink)이 없는 경우 상위 트리 구조나 텍스트 유추를 배제하고 엄격하게 "미상" 처리
         return dam_name, bms_name
 
     def traverse(node):
@@ -167,6 +159,14 @@ else:
             
     nick_bms = [bms for bms, cnt in bms_counts.items() if cnt >= 2]
     
+    # 파스텔톤 팔레트 설정 (동일 외조부마별 색상 구분을 위함)
+    bg_palette = ["#FFEBEE", "#E0F2F1", "#F3E5F5", "#E8F5E9", "#FBE9E7", "#FFFDE7", "#E1F5FE"]
+    border_palette = ["#D32F2F", "#00796B", "#7B1FA2", "#388E3C", "#E64A19", "#FBC02D", "#0288D1"]
+
+    nick_style_map = {}
+    for idx, ns in enumerate(nick_bms):
+        nick_style_map[ns] = (border_palette[idx % len(border_palette)], bg_palette[idx % len(bg_palette)])
+
     st.markdown(f"""
     <div class='info-box'>
         <b>배출 자마 총수:</b> {len(sire_data)}두 | 
@@ -176,9 +176,11 @@ else:
     
     if nick_bms:
         st.markdown("**🎨 주요 외조부마(Nick BMS) 범례:**")
-        bms_html = "<div style='display:flex; flex-wrap:wrap; gap:6px; margin-bottom:15px;'>"
+        bms_html = "<div style='display:flex; flex-wrap:wrap; gap:8px; margin-bottom:15px;'>"
         for b in nick_bms:
-            bms_html += f"<span style='background-color:#E0F2F1; color:#00796B; border:1px solid #00796B; padding:3px 8px; border-radius:4px; font-weight:bold;'>{clean_name_symbols(b)} ({bms_counts[b]}두)</span>"
+            b_c, bg_c = nick_style_map[b]
+            cnt = bms_counts[b]
+            bms_html += f"<span style='background-color:{bg_c}; color:{b_c}; border:1px solid {b_c}; padding:4px 10px; border-radius:6px; font-weight:bold; font-size:0.9em;'>{clean_name_symbols(b)} ({cnt}두)</span>"
         bms_html += "</div>"
         st.markdown(bms_html, unsafe_allow_html=True)
         
@@ -190,8 +192,9 @@ else:
         
         dam_str = f"--- 🔗 (모마: {dam_display})"
         
-        if bms_display != "미상" and item['bms'] in nick_bms:
-            bms_style = f"| <span class='bms-highlight'>[외조부마: {bms_display}]</span>"
+        if item['bms'] in nick_style_map:
+            b_c, bg_c = nick_style_map[item['bms']]
+            bms_style = f"| <span style='color:{b_c}; background-color:{bg_c}; font-weight:bold; padding:2px 6px; border-radius:4px; border:1px solid {b_c}80;'>[외조부마: {bms_display}]</span>"
         elif bms_display != "미상":
             bms_style = f"| [외조부마: {bms_display}]"
         else:
