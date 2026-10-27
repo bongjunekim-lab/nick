@@ -59,6 +59,7 @@ def load_mindmap_data():
         id_to_text = {}
         id_to_parent_text = {}
         
+        # 모든 노드의 텍스트와 부모 텍스트 매핑
         for parent in root.iter('node'):
             p_text = parent.get('TEXT', 'Unknown')
             for child in parent.findall('node'):
@@ -72,11 +73,11 @@ def load_mindmap_data():
         return None, None, None, f"파일 분석 오류: {str(e)}"
 
 # ---------------------------------------------------------
-# [1관점] 씨수말 관점: target_sire가 부마로서 배출한 아들/딸 + 외조부마(어미의 아비) 추적
+# [1관점 수정] 씨수말 관점: 자마 노드에 연결된 arrowlink(선)를 따라가서 어미와 외조부마(BMS) 추출
 # ---------------------------------------------------------
 def analyze_sire_perspective(root, target_sire_query, id_to_text, id_to_parent_text):
     query_norm = normalize_name(target_sire_query)
-    results = [] # {'progeny': 자마명, 'dam': 어미명, 'bms': 외조부마명}
+    results = []
 
     def traverse(node):
         my_text = node.get('TEXT', '')
@@ -84,29 +85,25 @@ def analyze_sire_perspective(root, target_sire_query, id_to_text, id_to_parent_t
         if query_norm in normalize_name(my_text):
             for child in node.findall('node'):
                 child_text = child.get('TEXT', '')
-                child_id = child.get('ID')
+                if not child_text:
+                    continue
                 
-                # 자마 노드(아들/딸)
-                if child_text:
-                    # 선(arrowlink)으로 연결된 모마(Dam) 노드 추적
-                    dam_name = "미상"
-                    bms_name = "미상"
-                    
-                    for arrow in child.findall('arrowlink'):
-                        dest_id = arrow.get('DESTINATION')
-                        if dest_id in id_to_text:
-                            linked_text = id_to_text[dest_id]
-                            # 연결된 노드가 모마인 경우
-                            dam_name = linked_text
-                            # 모마의 상위 노드(어미의 아비 = 외조부마 BMS)
-                            bms_name = id_to_parent_text.get(dest_id, "미상")
-                            break
-                            
-                    results.append({
-                        'progeny': child_text.strip(),
-                        'dam': dam_name.strip(),
-                        'bms': bms_name.strip()
-                    })
+                dam_name = "미상"
+                bms_name = "미상"
+                
+                # 자마 노드에 연결된 arrowlink(선) 추적
+                for arrow in child.findall('arrowlink'):
+                    dest_id = arrow.get('DESTINATION')
+                    if dest_id in id_to_text:
+                        dam_name = id_to_text[dest_id] # 선이 가리키는 대상 = 어미(모마)
+                        bms_name = id_to_parent_text.get(dest_id, "미상") # 어미의 부모 = 외조부마(BMS)
+                        break
+                
+                results.append({
+                    'progeny': child_text.strip(),
+                    'dam': dam_name.strip(),
+                    'bms': bms_name.strip()
+                })
                     
         for child in node.findall('node'):
             traverse(child)
@@ -115,7 +112,7 @@ def analyze_sire_perspective(root, target_sire_query, id_to_text, id_to_parent_t
     return results
 
 # ---------------------------------------------------------
-# [2관점] 외조부마 관점: target_sire의 직계 딸들이 배출한 2세대 자마 추적
+# [2관점] 외조부마 관점: 직계 딸들의 자마 & 교배 부마 분석
 # ---------------------------------------------------------
 def analyze_bms_perspective(root, target_sire_query, id_to_text, id_to_parent_text):
     query_norm = normalize_name(target_sire_query)
@@ -159,7 +156,7 @@ search_sire = st.sidebar.text_input("씨수말 이름을 입력하세요", value
 
 st.sidebar.markdown("---")
 st.sidebar.markdown("### 🔀 관점 선택 (체크박스)")
-view_sire_mode = st.sidebar.checkbox("1. 씨수말(Sire) 관점 분석 (아들/딸 & 외조부마 닉)", value=True)
+view_sire_mode = st.sidebar.checkbox("1. 씨수말(Sire) 관점 분석 (아들/딸 & 어미선대 외조부마)", value=True)
 view_bms_mode = st.sidebar.checkbox("2. 외조부마(BMS) 관점 분석 (직계딸의 자마 & 교배부마 닉)", value=False)
 
 if not search_sire.strip():
@@ -173,14 +170,13 @@ sire_clean_name = clean_name_symbols(search_sire)
 # =========================================================
 if view_sire_mode:
     st.subheader(f"1️⃣ 씨수말 [{sire_clean_name}] 관점 전수조사")
-    st.caption("※ 해당 씨수말이 직접 배출한 아들/딸과 선으로 연결된 어미(Dam) 및 외조부마(BMS)를 분석합니다.")
+    st.caption("※ 자마 노드에서 선(arrowlink)을 따라가 어미(Dam)와 그 선대인 외조부마(BMS)를 매칭합니다.")
     
     sire_data = analyze_sire_perspective(root_node, search_sire, id_to_text, id_to_parent_text)
     
     if not sire_data:
         st.warning("씨수말 관점 자마 데이터가 없습니다.")
     else:
-        # BMS(외조부마)별 중복 집계 (Nick 추출)
         bms_counts = defaultdict(int)
         for item in sire_data:
             if item['bms'] != "미상":
@@ -191,13 +187,12 @@ if view_sire_mode:
         st.markdown(f"""
         <div class='info-box'>
             <b>배출 자마 총수:</b> {len(sire_data)}두 | 
-            <b>매칭된 주요 외조부마(Nick BMS):</b> <span style='color:#D32F2F; font-weight:bold;'>{len(nick_bms)}두</span>
+            <b>중복 매칭된 외조부마(Nick BMS):</b> <span style='color:#D32F2F; font-weight:bold;'>{len(nick_bms)}두</span>
         </div>
         """, unsafe_allow_html=True)
         
-        # 외조부마(BMS) 범례
         if nick_bms:
-            st.markdown("**🎨 궁합이 검증된 주요 외조부마(Nick BMS):**")
+            st.markdown("**🎨 주요 외조부마(Nick BMS) 범례:**")
             bms_html = "<div style='display:flex; flex-wrap:wrap; gap:6px; margin-bottom:15px;'>"
             for b in nick_bms:
                 bms_html += f"<span style='background-color:#E0F2F1; color:#00796B; border:1px solid #00796B; padding:3px 8px; border-radius:4px; font-weight:bold;'>{b} ({bms_counts[b]}두)</span>"
@@ -206,7 +201,6 @@ if view_sire_mode:
             
         st.markdown("---")
         
-        # 자마 상세 리스트 출력
         for idx, item in enumerate(sire_data, 1):
             bms_style = f"<span class='bms-tag'>[외조부마: {item['bms']}]</span>" if item['bms'] in nick_bms else f"[외조부마: {item['bms']}]"
             st.markdown(f"<div class='progeny-item'>🐴 [{idx}] <b>{item['progeny']}</b> --- 🔗 (어미: {item['dam']}) | {bms_style}</div>", unsafe_allow_html=True)
