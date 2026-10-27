@@ -45,14 +45,12 @@ st.markdown("""
 def load_mindmap_data():
     file_path = '우수한 경주마(수말, 암말).mm'
     if not os.path.exists(file_path):
-        return None, None, None, None, f"'{file_path}' 파일을 찾을 수 없습니다. 스크립트와 같은 경로에 파일을 위치시켜 주세요."
-    
+        return None, None, None, None, f"'{file_path}' 파일을 찾을 수 없습니다."
     try:
-        # 인코딩 오류 및 BOM(Byte Order Mark) 문제를 방지하기 위해 utf-8-sig 사용
         with open(file_path, 'r', encoding='utf-8-sig') as f:
             content = f.read().strip()
             if not content:
-                return None, None, None, None, f"'{file_path}' 파일의 내용이 비어 있습니다. (no element found)"
+                return None, None, None, None, f"'{file_path}' 파일의 내용이 비어 있습니다."
             root = ET.fromstring(content)
         
         id_to_text = {}
@@ -69,8 +67,6 @@ def load_mindmap_data():
                     id_to_node[c_id] = child
                     
         return root, id_to_text, id_to_parent_text, id_to_node, None
-    except ET.ParseError as pe:
-        return None, None, None, None, f"XML 파싱 오류 (파일 형식이 올바른지 확인하세요): {str(pe)}"
     except Exception as e:
         return None, None, None, None, f"파일 분석 오류: {str(e)}"
 
@@ -92,8 +88,8 @@ def analyze_sire_perspective(root, target_sire_query, id_to_text, id_to_parent_t
                 backward_arrows[dest_id].append(src_id)
 
     def find_dam_and_bms(child_node, child_id):
-        dam_name = "미상"
-        bms_name = "미상"
+        dam_name = ""
+        bms_name = ""
 
         target_dam_id = None
         if child_id in forward_arrows:
@@ -103,15 +99,19 @@ def analyze_sire_perspective(root, target_sire_query, id_to_text, id_to_parent_t
 
         if target_dam_id and target_dam_id in id_to_text:
             dam_name = id_to_text[target_dam_id]
-            bms_name = id_to_parent_text.get(target_dam_id, "미상")
+            bms_name = id_to_parent_text.get(target_dam_id, "")
+            if bms_name == "Unknown":
+                bms_name = ""
             return dam_name, bms_name
 
-        parent_text = id_to_parent_text.get(child_id, "미상")
-        if parent_text != "미상" and normalize_name(parent_text) != query_norm:
+        parent_text = id_to_parent_text.get(child_id, "")
+        if parent_text and parent_text != "Unknown" and normalize_name(parent_text) != query_norm:
             dam_name = parent_text
             for p_id, p_text in id_to_text.items():
                 if p_text == parent_text:
-                    bms_name = id_to_parent_text.get(p_id, "미상")
+                    bms_name = id_to_parent_text.get(p_id, "")
+                    if bms_name == "Unknown":
+                        bms_name = ""
                     break
 
         return dam_name, bms_name
@@ -157,9 +157,6 @@ if not search_sire.strip():
 
 sire_clean_name = clean_name_symbols(search_sire)
 
-st.subheader(f"1️⃣ 씨수말 [{sire_clean_name}] 관점 전수조사")
-st.caption("※ 자마와 연결된 선(arrowlink)을 정방향/역방향으로 추적하여 모마(Dam)와 외조부마(BMS)를 정밀 매칭합니다.")
-
 sire_data = analyze_sire_perspective(root_node, search_sire, id_to_text, id_to_parent_text, id_to_node)
 
 if not sire_data:
@@ -167,7 +164,7 @@ if not sire_data:
 else:
     bms_counts = defaultdict(int)
     for item in sire_data:
-        if item['bms'] != "미상":
+        if item['bms']:
             bms_counts[item['bms']] += 1
             
     nick_bms = [bms for bms, cnt in bms_counts.items() if cnt >= 2]
@@ -190,12 +187,17 @@ else:
     st.markdown("---")
     
     for idx, item in enumerate(sire_data, 1):
-        bms_display = clean_name_symbols(item['bms'])
-        dam_display = clean_name_symbols(item['dam'])
+        bms_display = clean_name_symbols(item['bms']) if item['bms'] else ""
+        dam_display = clean_name_symbols(item['dam']) if item['dam'] else ""
         
-        if item['bms'] in nick_bms:
-            bms_style = f"<span class='bms-highlight'>[외조부마: {bms_display}]</span>"
+        dam_str = f"--- 🔗 (모마: {dam_display})" if dam_display else ""
+        
+        if bms_display:
+            if item['bms'] in nick_bms:
+                bms_style = f"| <span class='bms-highlight'>[외조부마: {bms_display}]</span>"
+            else:
+                bms_style = f"| [외조부마: {bms_display}]"
         else:
-            bms_style = f"[외조부마: {bms_display}]"
+            bms_style = ""
             
-        st.markdown(f"<div class='progeny-item'>🐴 [{idx}] <b>{item['progeny']}</b> --- 🔗 (모마: {dam_display}) | {bms_style}</div>", unsafe_allow_html=True)
+        st.markdown(f"<div class='progeny-item'>🐴 [{idx}] <b>{item['progeny']}</b> {dam_str} {bms_style}</div>", unsafe_allow_html=True)
