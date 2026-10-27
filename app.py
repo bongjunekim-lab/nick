@@ -88,9 +88,10 @@ def analyze_sire_perspective(root, target_sire_query, id_to_text, id_to_parent_t
                 backward_arrows[dest_id].append(src_id)
 
     def find_dam_and_bms(child_node, child_id):
-        dam_name = ""
-        bms_name = ""
+        dam_name = "미상"
+        bms_name = "미상"
 
+        # 1. 자마 노드에 연결된 화살표(arrowlink) 확인
         target_dam_id = None
         if child_id in forward_arrows:
             target_dam_id = forward_arrows[child_id][0]
@@ -99,20 +100,32 @@ def analyze_sire_perspective(root, target_sire_query, id_to_text, id_to_parent_t
 
         if target_dam_id and target_dam_id in id_to_text:
             dam_name = id_to_text[target_dam_id]
-            bms_name = id_to_parent_text.get(target_dam_id, "")
-            if bms_name == "Unknown":
-                bms_name = ""
+            bms_name = id_to_parent_text.get(target_dam_id, "미상")
+            if not bms_name or bms_name == "Unknown":
+                bms_name = "미상"
             return dam_name, bms_name
 
-        parent_text = id_to_parent_text.get(child_id, "")
+        # 2. 화살표가 없는 경우 부모-자식 트리 구조에서 모마 찾기
+        parent_text = id_to_parent_text.get(child_id, "미상")
         if parent_text and parent_text != "Unknown" and normalize_name(parent_text) != query_norm:
             dam_name = parent_text
             for p_id, p_text in id_to_text.items():
                 if p_text == parent_text:
-                    bms_name = id_to_parent_text.get(p_id, "")
-                    if bms_name == "Unknown":
-                        bms_name = ""
+                    bms_name = id_to_parent_text.get(p_id, "미상")
+                    if not bms_name or bms_name == "Unknown":
+                        bms_name = "미상"
                     break
+            return dam_name, bms_name
+
+        # 3. 자마 노드 자체의 텍스트나 하위/인접 구조에서 모마가 명시된 경우 추가 탐색
+        child_text = child_node.get('TEXT', '')
+        for p_id, p_text in id_to_text.items():
+            if child_text in p_text and p_text != child_text:
+                dam_name = p_text
+                bms_name = id_to_parent_text.get(p_id, "미상")
+                if not bms_name or bms_name == "Unknown":
+                    bms_name = "미상"
+                return dam_name, bms_name
 
         return dam_name, bms_name
 
@@ -164,7 +177,7 @@ if not sire_data:
 else:
     bms_counts = defaultdict(int)
     for item in sire_data:
-        if item['bms']:
+        if item['bms'] and item['bms'] != "미상":
             bms_counts[item['bms']] += 1
             
     nick_bms = [bms for bms, cnt in bms_counts.items() if cnt >= 2]
@@ -187,17 +200,16 @@ else:
     st.markdown("---")
     
     for idx, item in enumerate(sire_data, 1):
-        bms_display = clean_name_symbols(item['bms']) if item['bms'] else ""
-        dam_display = clean_name_symbols(item['dam']) if item['dam'] else ""
+        bms_display = clean_name_symbols(item['bms']) if item['bms'] and item['bms'] != "미상" else "미상"
+        dam_display = clean_name_symbols(item['dam']) if item['dam'] and item['dam'] != "미상" else "미상"
         
-        dam_str = f"--- 🔗 (모마: {dam_display})" if dam_display else ""
+        dam_str = f"--- 🔗 (모마: {dam_display})"
         
-        if bms_display:
-            if item['bms'] in nick_bms:
-                bms_style = f"| <span class='bms-highlight'>[외조부마: {bms_display}]</span>"
-            else:
-                bms_style = f"| [외조부마: {bms_display}]"
+        if bms_display != "미상" and item['bms'] in nick_bms:
+            bms_style = f"| <span class='bms-highlight'>[외조부마: {bms_display}]</span>"
+        elif bms_display != "미상":
+            bms_style = f"| [외조부마: {bms_display}]"
         else:
-            bms_style = ""
+            bms_style = f"| [외조부마: 미상]"
             
         st.markdown(f"<div class='progeny-item'>🐴 [{idx}] <b>{item['progeny']}</b> {dam_str} {bms_style}</div>", unsafe_allow_html=True)
