@@ -137,9 +137,13 @@ if err:
     st.error(err)
     st.stop()
 
-# 사이드바
+# 사이드바 설정
 st.sidebar.header("🔍 검색 설정")
 search_sire = st.sidebar.text_input("씨수말 이름을 입력하세요", value="bernardini")
+
+st.sidebar.markdown("---")
+st.sidebar.markdown("### 🔀 필터 옵션")
+hide_unknown = st.sidebar.checkbox("미상 항목 숨기기 (모마/외조부마 미상 제외)", value=False)
 
 if not search_sire.strip():
     st.info("👈 좌측 사이드바에 씨수말 이름을 입력하세요.")
@@ -152,6 +156,13 @@ sire_data = analyze_sire_perspective(root_node, search_sire, id_to_text, id_to_p
 if not sire_data:
     st.warning("조건에 맞는 자마 데이터가 없습니다.")
 else:
+    # 필터 적용
+    filtered_data = []
+    for item in sire_data:
+        if hide_unknown and (item['dam'] == "미상" or item['bms'] == "미상"):
+            continue
+        filtered_data.append(item)
+
     bms_counts = defaultdict(int)
     for item in sire_data:
         if item['bms'] and item['bms'] != "미상":
@@ -159,7 +170,6 @@ else:
             
     nick_bms = [bms for bms, cnt in bms_counts.items() if cnt >= 2]
     
-    # 파스텔톤 팔레트 설정 (동일 외조부마별 색상 구분을 위함)
     bg_palette = ["#FFEBEE", "#E0F2F1", "#F3E5F5", "#E8F5E9", "#FBE9E7", "#FFFDE7", "#E1F5FE"]
     border_palette = ["#D32F2F", "#00796B", "#7B1FA2", "#388E3C", "#E64A19", "#FBC02D", "#0288D1"]
 
@@ -169,7 +179,8 @@ else:
 
     st.markdown(f"""
     <div class='info-box'>
-        <b>배출 자마 총수:</b> {len(sire_data)}두 | 
+        <b>전체 배출 자마 수:</b> {len(sire_data)}두 | 
+        <b>화면 표시 자마 수:</b> {len(filtered_data)}두 | 
         <b>중복 매칭된 외조부마(Nick BMS):</b> <span style='color:#D32F2F; font-weight:bold;'>{len(nick_bms)}두</span>
     </div>
     """, unsafe_allow_html=True)
@@ -186,7 +197,7 @@ else:
         
     st.markdown("---")
     
-    for idx, item in enumerate(sire_data, 1):
+    for idx, item in enumerate(filtered_data, 1):
         bms_display = clean_name_symbols(item['bms']) if item['bms'] and item['bms'] != "미상" else "미상"
         dam_display = clean_name_symbols(item['dam']) if item['dam'] and item['dam'] != "미상" else "미상"
         
