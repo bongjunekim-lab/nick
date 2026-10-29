@@ -18,12 +18,14 @@ def normalize_name(text):
     clean = clean.split('(')[0]
     return clean.strip().lower()
 
-def is_valid_mare(name):
-    """모마 명칭에 유효한 암말 조건이 포함되어 있는지 검증합니다."""
-    if not name or name == "미상":
+def is_valid_mare(name, sire_query=""):
+    """모마 명칭에 유효한 암말 조건이 포함되어 있는지 검증하고 자기 참조를 방어합니다."""
+    if not name or name == "미상" or name == "Unknown":
         return False
     if '수)' in name and '암' not in name:
         return False
+    if sire_query and normalize_name(sire_query) in normalize_name(name):
+        return False  # 자기 참조(Self-reference) 데이터 오류 원천 차단
     return True
 
 # 1. 페이지 설정
@@ -119,7 +121,7 @@ def load_mindmap_data():
         return None, None, None, None, f"파일 분석 오류: {str(e)}"
 
 # -------------------------------------------------------------------------
-# [관점 1] 씨수말 전수조사 분석 함수 (구조적 역전 방지 정밀 보완)
+# [관점 1] 씨수말 전수조사 분석 함수 (구조적 역전 및 자기 참조 방어 보완)
 # -------------------------------------------------------------------------
 def analyze_sire_perspective(root, target_sire_query, id_to_text, id_to_parent_text):
     query_norm = normalize_name(target_sire_query)
@@ -158,17 +160,14 @@ def analyze_sire_perspective(root, target_sire_query, id_to_text, id_to_parent_t
 
                 if target_dam_id and target_dam_id in id_to_text:
                     potential_dam = id_to_text[target_dam_id]
-                    # 만약 모마 자리에 수말 씨수말 이름이 잘못 맵핑되어 들어온 경우 방어
-                    if '수)' in potential_dam and '암' not in potential_dam:
-                        potential_dam = "미상"
                     
-                    if query_norm not in normalize_name(potential_dam):
+                    # 자기 참조 혹은 수말 오인식 방어
+                    if not is_valid_mare(potential_dam, target_sire_query) and query_norm not in normalize_name(potential_dam):
                         dam_name = potential_dam
                         potential_bms = id_to_parent_text.get(target_dam_id, "미상")
                         if potential_bms and potential_bms != "Unknown" and query_norm not in normalize_name(potential_bms):
                             bms_name = potential_bms
 
-                # 자마 데이터의 신뢰성 검증 (실제 모마 정보가 비정상적으로 꼬인 경우 필터링 대상화)
                 results.append({
                     'progeny': child_text.strip(),
                     'dam': dam_name.strip(),
@@ -309,9 +308,6 @@ if "1." in view_mode:
             if bms_full and bms_full != "미상":
                 bms_grouped_items[bms_full].append(item)
 
-        # -----------------------------------------------------------------
-        # 요약 목록(범례/단독출현)에서 모마 연결이 비정상적인 개체(예: Loves Only Me 오류 형태) 원천 배제
-        # -----------------------------------------------------------------
         if nick_bms:
             st.markdown("**🎨 주요 외조부마(Nick BMS, 2두 이상) 범례 및 파란색(특수) 자마 목록:**")
             for bms_name in nick_bms:
@@ -324,8 +320,7 @@ if "1." in view_mode:
                 items = bms_grouped_items[bms_name]
                 blue_progenies = []
                 for item in items:
-                    # 모마 정보가 '미상'이거나 데이터 오류인 경우 요약 목록에서 제외
-                    if not is_valid_mare(item['dam']):
+                    if not is_valid_mare(item['dam'], search_sire):
                         continue
                         
                     child_name = item['progeny']
@@ -353,7 +348,7 @@ if "1." in view_mode:
                 items = bms_grouped_items[bms_name]
                 blue_progenies_single = []
                 for item in items:
-                    if not is_valid_mare(item['dam']):
+                    if not is_valid_mare(item['dam'], search_sire):
                         continue
                         
                     child_name = item['progeny']
