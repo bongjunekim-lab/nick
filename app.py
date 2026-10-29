@@ -41,12 +41,12 @@ st.markdown("""
         color: #D32F2F !important;
         font-weight: bold;
     }
-    /* 요청사항: 암말 @, #, * 기호가 있는 경우 진한 파란색 (#0000FF) 강조 */
+    /* 암말 @, #, * 기호 진한 파란색 강조 */
     .highlight-elite-daughter {
         color: #0000FF !important;
         font-weight: 900 !important;
     }
-    /* 요청사항: 수말인 경우 G1-7두 이상 배출 자마는 진한 파란색 (#0000FF) 강조 */
+    /* 수말 G1-7두 이상 진한 파란색 강조 */
     .highlight-g1-son {
         color: #0000FF !important;
         font-weight: 900 !important;
@@ -160,7 +160,7 @@ def analyze_sire_perspective(root, target_sire_query, id_to_text, id_to_parent_t
     return results
 
 # -------------------------------------------------------------------------
-# [관점 2] 외조부마 관점: 직계 딸("암)" 표기)들의 자마 & 교배 부마 닉 분석 (중복 제거 보완)
+# [관점 2] 외조부마 관점: 직계 딸("암)" 표기)들의 자마 & 교배 부마 닉 분석
 # -------------------------------------------------------------------------
 def analyze_bms_perspective(root, target_sire_query, id_to_text, id_to_parent_text):
     query_norm = normalize_name(target_sire_query)
@@ -174,7 +174,7 @@ def analyze_bms_perspective(root, target_sire_query, id_to_text, id_to_parent_te
                 if '암)' in child_text:
                     progeny_list = []
                     seen_ids = set()
-                    seen_combos = set() # 자마 이름 + 부마 이름 중복 방지 세트
+                    seen_combos = set()
                     
                     for arrow in child.findall('arrowlink'):
                         dest_id = arrow.get('DESTINATION')
@@ -226,7 +226,6 @@ if "1." in view_mode:
     hide_unknown = st.sidebar.checkbox("미상 항목 숨기기 (연결선 단절 데이터 삭제)", value=False)
 
 st.sidebar.markdown("---")
-# 하이라이트 토글 체크박스 추가
 highlight_special_progeny = st.sidebar.checkbox("🎯 특수 자마 하이라이트 (암말 @,#,* & 수말 G1-7+ 파란색 강조)", value=True)
 
 if not search_sire.strip():
@@ -260,6 +259,7 @@ if "1." in view_mode:
                 bms_counts[item['bms']] += 1
                 
         nick_bms = [bms for bms, cnt in bms_counts.items() if cnt >= 2]
+        single_bms = [bms for bms, cnt in bms_counts.items() if cnt == 1 and bms != "미상"]
         
         bg_palette = ["#FFEBEE", "#E0F2F1", "#F3E5F5", "#E8F5E9", "#FBE9E7", "#FFFDE7", "#E1F5FE"]
         border_palette = ["#D32F2F", "#00796B", "#7B1FA2", "#388E3C", "#E64A19", "#FBC02D", "#0288D1"]
@@ -272,12 +272,13 @@ if "1." in view_mode:
         <div class='info-box'>
             <b>전체 배출 자마 수:</b> {len(sire_data)}두 | 
             <b>현재 표시 자마 수:</b> {len(filtered_data)}두 | 
-            <b>중복 매칭된 외조부마(Nick BMS):</b> <span style='color:#D32F2F; font-weight:bold;'>{len(nick_bms)}두</span>
+            <b>중복 매칭된 외조부마(Nick BMS, 2두 이상):</b> <span style='color:#D32F2F; font-weight:bold;'>{len(nick_bms)}두</span> | 
+            <b>단독 출현 외조부마(1두):</b> <span style='color:#0077CC; font-weight:bold;'>{len(single_bms)}두</span>
         </div>
         """, unsafe_allow_html=True)
         
         if nick_bms:
-            st.markdown("**🎨 주요 외조부마(Nick BMS) 범례:**")
+            st.markdown("**🎨 주요 외조부마(Nick BMS, 2두 이상) 범례:**")
             bms_html = "<div style='display:flex; flex-wrap:wrap; gap:8px; margin-bottom:15px;'>"
             for b in nick_bms:
                 b_c, bg_c = nick_style_map[b]
@@ -288,7 +289,11 @@ if "1." in view_mode:
             
         st.markdown("---")
         
-        for idx, item in enumerate(filtered_data, 1):
+        # 1. 2두 이상 Nick BMS에 해당하는 항목 먼저 출력
+        st.markdown("### 🔥 중복 교배 부마(Nick BMS, 2두 이상) 자마 목록")
+        nick_filtered_data = [item for item in filtered_data if item['bms'] in nick_style_map]
+        
+        for idx, item in enumerate(nick_filtered_data, 1):
             bms_display = clean_name_symbols(item['bms']) if item['bms'] and item['bms'] != "미상" else "미상"
             dam_display = clean_name_symbols(item['dam']) if item['dam'] and item['dam'] != "미상" else "미상"
             
@@ -319,12 +324,45 @@ if "1." in view_mode:
             if item['bms'] in nick_style_map:
                 b_c, bg_c = nick_style_map[item['bms']]
                 bms_style = f"| <span style='color:{b_c}; background-color:{bg_c}; font-weight:bold; padding:2px 6px; border-radius:4px; border:1px solid {b_c}80;'>[외조부마: {bms_display}]</span>"
-            elif bms_display != "미상":
-                bms_style = f"| [외조부마: {bms_display}]"
             else:
-                bms_style = f"| [외조부마: 미상]"
+                bms_style = f"| [외조부마: {bms_display}]"
                 
             st.markdown(f"<div class='progeny-item'>🐴 [{idx}] <b>{child_display}</b> {dam_str} {bms_style}</div>", unsafe_allow_html=True)
+
+        # 2. 1회 출현(1두) 외조부마 항목을 별도 항목으로 그룹화하여 하단에 나열
+        st.markdown("---")
+        st.markdown("### 📌 단독 출현 외조부마 (1두) 목록")
+        
+        single_bms_dict = defaultdict(list)
+        for item in filtered_data:
+            b = item['bms']
+            if b in single_bms:
+                single_bms_dict[b].append(item)
+
+        for bms_name, items in single_bms_dict.items():
+            cleaned_bms = clean_name_symbols(bms_name)
+            st.markdown(f"**🔹 {bms_name}** (1두)")
+            for item in items:
+                dam_display = clean_name_symbols(item['dam']) if item['dam'] and item['dam'] != "미상" else "미상"
+                child_name = item['progeny']
+                
+                g1_match = g1_pattern.search(child_name)
+                is_high_g1 = bool(g1_match and int(g1_match.group(1)) >= 7)
+                is_daughter = '암)' in child_name
+                is_elite_daughter = ('@' in child_name or '#' in child_name or '＠' in child_name or '＃' in child_name or '*' in child_name) and is_daughter
+                is_high_g1_son = is_high_g1 and not is_daughter
+
+                if highlight_special_progeny:
+                    if is_high_g1_son:
+                        child_display = f"<span class='highlight-g1-son'>{child_name}</span>"
+                    elif is_elite_daughter:
+                        child_display = f"<span class='highlight-elite-daughter'>{child_name}</span>"
+                    else:
+                        child_display = child_name
+                else:
+                    child_display = child_name
+
+                st.markdown(f"&nbsp;&nbsp;&nbsp;&nbsp;- {child_display} --- 🔗 (모마: {dam_display})")
 
 # =========================================================================
 # [탭 2] 외조부마(BMS) 관점 분석 실행 결과 출력
