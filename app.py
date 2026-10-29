@@ -19,11 +19,10 @@ def normalize_name(text):
     return clean.strip().lower()
 
 def is_valid_mare(name, sire_query=""):
-    """모마 명칭의 유효성을 검증하되, 실제 데이터는 최대한 보존합니다."""
+    """모마 명칭의 유효성을 검증하고 자기 참조를 차단합니다."""
     if not name or name in ["미상", "Unknown", "정보 없음"]:
         return False
-    # 명백한 수말 오인식 또는 자기 참조인 경우에만 차단
-    if ('수)' in name and '암' not in name):
+    if '수)' in name and '암' not in name:
         return False
     if sire_query and normalize_name(sire_query) == normalize_name(name):
         return False
@@ -122,7 +121,7 @@ def load_mindmap_data():
         return None, None, None, None, f"파일 분석 오류: {str(e)}"
 
 # -------------------------------------------------------------------------
-# [관점 1] 씨수말 전수조사 분석 함수
+# [관점 1] 씨수말 전수조사 분석 함수 (화살표 추적 로직 혈통 구조적 수정)
 # -------------------------------------------------------------------------
 def analyze_sire_perspective(root, target_sire_query, id_to_text, id_to_parent_text):
     query_norm = normalize_name(target_sire_query)
@@ -153,24 +152,38 @@ def analyze_sire_perspective(root, target_sire_query, id_to_text, id_to_parent_t
                 dam_name = "미상"
                 bms_name = "미상"
 
-                target_dam_id = None
+                # 1. 자마(child)에서 직접 나가는 화살표 또는 들어오는 화살표 추적
+                arrow_linked_id = None
                 if child_id in forward_arrows:
-                    target_dam_id = forward_arrows[child_id][0]
+                    arrow_linked_id = forward_arrows[child_id][0]
                 elif child_id in backward_arrows:
-                    target_dam_id = backward_arrows[child_id][0]
+                    arrow_linked_id = backward_arrows[child_id][0]
 
-                if target_dam_id and target_dam_id in id_to_text:
-                    potential_dam = id_to_text[target_dam_id]
-                    
-                    if is_valid_mare(potential_dam, target_sire_query):
-                        dam_name = potential_dam
-                        potential_bms = id_to_parent_text.get(target_dam_id, "미상")
-                        if potential_bms and potential_bms != "Unknown":
-                            bms_name = potential_bms
+                if arrow_linked_id and arrow_linked_id in id_to_text:
+                    linked_text = id_to_text[arrow_linked_id]
+                    parent_of_linked = id_to_parent_text.get(arrow_linked_id, "미상")
+
+                    # [핵심 구분] 연결된 노드가 씨암말('암)')인 경우
+                    if '암)' in linked_text:
+                        dam_name = linked_text
+                        # 씨암말의 부모 노드가 외조부마
+                        if parent_of_linked and parent_of_linked != "Unknown" and query_norm not in normalize_name(parent_of_linked):
+                            bms_name = parent_of_linked
                     else:
-                        # 데이터가 유효하지 않거나 자기 참조인 경우 명시적 미상 처리
-                        dam_name = "미상"
-                        bms_name = "미상"
+                        # 연결된 노드가 외조부마(씨수말) 노드인 경우 (Sherriff'S Deputy -> Deputy Minister 형태)
+                        # 연결 노드 본인이 외조부마가 됨
+                        if query_norm not in normalize_name(linked_text):
+                            bms_name = linked_text
+                        
+                        # 화살표가 시작된 노드가 모마 노드인지 검증
+                        if arrow_linked_id in backward_arrows:
+                            origin_id = backward_arrows[arrow_linked_id][0]
+                            if origin_id in id_to_text and '암)' in id_to_text[origin_id]:
+                                dam_name = id_to_text[origin_id]
+
+                # 자기 참조 방어 및 데이터 정제
+                if normalize_name(child_text) == normalize_name(dam_name):
+                    dam_name = "미상"
 
                 results.append({
                     'progeny': child_text.strip(),
