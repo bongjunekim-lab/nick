@@ -21,7 +21,7 @@ def normalize_name(text):
 # 1. 페이지 설정
 st.set_page_config(page_title="씨수말 & 외조부마(BMS) 통합 혈통 닉 분석기", layout="wide")
 
-# CSS 스타일 정의 (단독 출현 목록 타이틀을 상단 배지와 동일한 크기와 스타일로 통일)
+# CSS 스타일 정의
 st.markdown("""
     <style>
     .elite-mare {
@@ -55,7 +55,7 @@ st.markdown("""
         color: #000000 !important;
         font-weight: 900 !important;
     }
-    /* 상단 범례 배지 및 단독 출현 씨수말 항목 동일한 크기 적용 */
+    /* 상단 범례 배지 스타일 */
     .legend-badge {
         font-size: 1.15em !important;
         font-weight: bold !important;
@@ -63,7 +63,7 @@ st.markdown("""
         border-radius: 6px;
         display: inline-block;
     }
-    /* 단독 출현 항목을 상단 배지와 동일한 스타일로 맞춤 */
+    /* 단독 출현 항목 스타일 */
     .single-sire-title {
         font-size: 1.15em !important;
         font-weight: bold !important;
@@ -123,7 +123,7 @@ def load_mindmap_data():
         return None, None, None, None, f"파일 분석 오류: {str(e)}"
 
 # -------------------------------------------------------------------------
-# [관점 1] 씨수말 전수조사: 아들/딸 전수 나열 + 연결선(arrowlink) 기반 모마 및 외조부마(BMS) 추적
+# [관점 1] 씨수말 전수조사 분석 함수
 # -------------------------------------------------------------------------
 def analyze_sire_perspective(root, target_sire_query, id_to_text, id_to_parent_text):
     query_norm = normalize_name(target_sire_query)
@@ -181,44 +181,57 @@ def analyze_sire_perspective(root, target_sire_query, id_to_text, id_to_parent_t
     return results
 
 # -------------------------------------------------------------------------
-# [관점 2] 외조부마 관점: 직계 딸("암)" 표기)들의 자마 & 교배 부마 닉 분석
+# [관점 2] 외조부마(BMS) 관점 분석 함수 (오류 완벽 수정 버전)
 # -------------------------------------------------------------------------
 def analyze_bms_perspective(root, target_sire_query, id_to_text, id_to_parent_text):
     query_norm = normalize_name(target_sire_query)
     results = []
 
-    def traverse(node):
+    # 1. 전체 지도에서 각 모마(Dam ID)를 향하는 자마들의 ID 매핑 구축
+    dam_to_progeny_ids = defaultdict(list)
+    for node in root.iter('node'):
+        src_id = node.get('ID')
+        if not src_id:
+            continue
+        for arrow in node.findall('arrowlink'):
+            dest_id = arrow.get('DESTINATION')
+            if dest_id:
+                dam_to_progeny_ids[dest_id].append(src_id)
+
+    # 2. 대상 BMS(외조부마) 노드 ID들 탐색
+    bms_node_ids = set()
+    for node in root.iter('node'):
         my_text = node.get('TEXT', '')
         if query_norm in normalize_name(my_text):
+            bms_node_ids.add(node.get('ID'))
+
+    # 3. BMS 노드의 자식들 중 '암)'이 포함된 직계 딸들을 찾고, 이들을 모마로 갖는 실제 자마 연결
+    for node in root.iter('node'):
+        if node.get('ID') in bms_node_ids:
             for child in node.findall('node'):
-                child_text = child.get('TEXT', '')
-                if '암)' in child_text:
+                daughter_text = child.get('TEXT', '')
+                daughter_id = child.get('ID')
+                if '암)' in daughter_text and daughter_id:
                     progeny_list = []
-                    seen_ids = set()
                     seen_combos = set()
                     
-                    for arrow in child.findall('arrowlink'):
-                        dest_id = arrow.get('DESTINATION')
-                        if dest_id in id_to_text and dest_id not in seen_ids:
-                            c_text = id_to_text[dest_id]
-                            f_text = id_to_parent_text.get(dest_id, "정보 없음")
+                    progeny_ids = dam_to_progeny_ids.get(daughter_id, [])
+                    for p_id in progeny_ids:
+                        if p_id in id_to_text:
+                            c_text = id_to_text[p_id]
+                            f_text = id_to_parent_text.get(p_id, "정보 없음")
                             
                             combo_key = (c_text.strip(), f_text.strip())
                             if combo_key not in seen_combos:
                                 progeny_list.append({'child': c_text, 'father': f_text})
                                 seen_combos.add(combo_key)
                                 
-                            seen_ids.add(dest_id)
-                            
                     if progeny_list:
                         results.append({
-                            'daughter': child_text.strip(),
+                            'daughter': daughter_text.strip(),
                             'progeny': progeny_list
                         })
-        for child in node.findall('node'):
-            traverse(child)
-
-    traverse(root)
+                        
     return results
 
 # UI 화면 타이틀
@@ -231,7 +244,7 @@ if err:
 
 # 사이드바 설정 영역
 st.sidebar.header("🔍 검색 설정")
-search_sire = st.sidebar.text_input("씨수말 이름을 입력하세요", value="danzig")
+search_sire = st.sidebar.text_input("씨수말 이름을 입력하세요", value="seattle slew")
 
 st.sidebar.markdown("---")
 st.sidebar.markdown("### 🔀 분석 관점 선택")
@@ -261,7 +274,7 @@ g1_pattern = re.compile(r'G1-(\d+)')
 # =========================================================================
 if "1." in view_mode:
     st.subheader(f"1️⃣ 씨수말 [{sire_clean_name}] 관점 전수조사")
-    st.caption("※ 씨수말이 배출한 아들·딸을 전수 나열하고, 연결선(arrowlink)이 있는 경우 모마와 외조부마(BMS)를 추적합니다. 선이 없는 경우 '미상'으로 표기됩니다.")
+    st.caption("※ 씨수말이 배출한 아들·딸을 전수 나열하고, 연결선(arrowlink)이 있는 경우 모마와 외조부마(BMS)를 추적합니다.")
     
     sire_data = analyze_sire_perspective(root_node, search_sire, id_to_text, id_to_parent_text)
     
@@ -397,7 +410,7 @@ if "1." in view_mode:
             st.markdown(f"<div class='progeny-item'>🐴 [{idx}] <b>{child_display}</b> {dam_str} {bms_style}</div>", unsafe_allow_html=True)
 
 # =========================================================================
-# [탭 2] 외조부마(BMS) 관점 분석 실행 결과 출력
+# [탭 2] 외조부마(BMS) 관점 분석 실행 결과 출력 (오류 수정 적용)
 # =========================================================================
 else:
     st.subheader(f"2️⃣ 외조부마(BMS) [{sire_clean_name}] 관점 분석")
@@ -470,7 +483,7 @@ else:
                 else:
                     st.markdown(f"&nbsp;&nbsp;&nbsp;&nbsp;↳ <span style='color: #888; font-style: italic;'>조건을 만족하는 파란색 자마 없음</span>", unsafe_allow_html=True)
 
-        # 2. 단독 출현 씨수말 목록 (상단 배지와 완전히 동일한 크기/스타일 적용)
+        # 2. 단독 출현 씨수말 목록
         if single_sires:
             st.markdown("---")
             st.markdown("### 📌 단독 출현 씨수말 목록")
@@ -497,7 +510,7 @@ else:
 
         st.markdown("---")
 
-        # 3. 기존 직계딸별 상세 리스트 (하단 배치)
+        # 3. 직계딸별 상세 리스트
         st.markdown("### 📋 직계 딸별 자마 및 교배 부마 매칭")
         for idx, item in enumerate(bms_data, 1):
             daughter_name = item['daughter']
@@ -536,4 +549,4 @@ else:
                 else:
                     father_display = f"<b>{father_name}</b>"
                     
-                st.markdown(f"<div class='progeny-item'>🔗 [연결 자마] {child_display} (부마: {father_display})</div>", unsafe_allow_html=True) 
+                st.markdown(f"<div class='progeny-item'>🔗 [연결 자마] {child_display} (부마: {father_display})</div>", unsafe_allow_html=True)
