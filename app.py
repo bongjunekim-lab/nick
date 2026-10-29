@@ -6,11 +6,28 @@ from collections import defaultdict
 
 def clean_name_symbols(text):
     """씨수말 이름 맨 앞의 숫자, 특수기호(도형, 기호 등), 공백을 모두 제거합니다."""
+    if not text:
+        return ""
     cleaned = re.sub(r'^[\d\s\W_]+', '', text)
     return cleaned.strip()
 
+def clean_and_normalize_text(text):
+    """
+    모마 및 핵심 기호(@, #, *)는 절대 건드리지 않고 보호하며,
+    나머지 파싱을 방해하는 특수문자나 괄호, 하이픈 등을 일관되게 무시(공백 치환)합니다.
+    """
+    if not text:
+        return ""
+    # '@', '#', '*', '모마' 및 한글, 영문, 숫자, 공백, 콜론(:)을 제외한 나머지 특수문자를 공백으로 치환
+    # (주의: @, #, * 기호와 '모마' 단어는 정규식 범위에서 완전히 보호됩니다)
+    cleaned = re.sub(r'[^가-힣a-zA-Z0-9\s@#*:]', ' ', text)
+    # 연속된 공백 압축
+    return re.sub(r'\s+', ' ', cleaned).strip()
+
 def normalize_name(text):
     """이름 정제 및 비교용 표준화"""
+    if not text:
+        return ""
     clean = text.replace('@', '').replace('#', '').replace('*', '')
     clean = clean.replace('＠', '').replace('＃', '')
     clean = clean.replace('암)', '').replace('수)', '').replace('거)', '')
@@ -197,10 +214,14 @@ def analyze_sire_perspective(root, target_sire_query, id_to_text, id_to_parent_t
                 if normalize_name(child_text) == normalize_name(bms_name):
                     bms_name = "미상"
 
+                # 3. 추출된 모마 및 외조부마 텍스트에 보호 규칙 적용 정제
+                cleaned_dam = clean_and_normalize_text(dam_name)
+                cleaned_bms = clean_and_normalize_text(bms_name)
+
                 results.append({
                     'progeny': child_text.strip(),
-                    'dam': dam_name.strip(),
-                    'bms': bms_name.strip()
+                    'dam': cleaned_dam if cleaned_dam else "미상",
+                    'bms': cleaned_bms if cleaned_bms else "미상"
                 })
 
         for child in node.findall('node'):
@@ -247,7 +268,7 @@ def analyze_bms_perspective(root, target_sire_query, id_to_text, id_to_parent_te
                             
                     if progeny_list:
                         results.append({
-                            'daughter': child_text.strip(),
+                            'daughter': clean_and_normalize_text(child_text.strip()),
                             'progeny': progeny_list
                         })
         for child in node.findall('node'):
