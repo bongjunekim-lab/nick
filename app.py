@@ -289,11 +289,9 @@ if "1." in view_mode:
             
         st.markdown("---")
         
-        # 1. 2두 이상 Nick BMS에 해당하는 항목 먼저 출력
-        st.markdown("### 🔥 중복 교배 부마(Nick BMS, 2두 이상) 자마 목록")
-        nick_filtered_data = [item for item in filtered_data if item['bms'] in nick_style_map]
-        
-        for idx, item in enumerate(nick_filtered_data, 1):
+        # 1. 기존 전체 순번 리스트 출력 (상단)
+        st.markdown("### 📋 전체 자마 리스트 및 외조부마 매칭")
+        for idx, item in enumerate(filtered_data, 1):
             bms_display = clean_name_symbols(item['bms']) if item['bms'] and item['bms'] != "미상" else "미상"
             dam_display = clean_name_symbols(item['dam']) if item['dam'] and item['dam'] != "미상" else "미상"
             
@@ -329,40 +327,56 @@ if "1." in view_mode:
                 
             st.markdown(f"<div class='progeny-item'>🐴 [{idx}] <b>{child_display}</b> {dam_str} {bms_style}</div>", unsafe_allow_html=True)
 
-        # 2. 1회 출현(1두) 외조부마 항목을 별도 항목으로 그룹화하여 하단에 나열
+        # 2. 범례별 파란색(특수) 자마 추출 상세 목록 섹션 추가
         st.markdown("---")
-        st.markdown("### 📌 단독 출현 외조부마 (1두) 목록")
+        st.markdown("### 🔍 주요 외조부마 범례별 파란색(특수) 자마 상세 목록")
         
-        single_bms_dict = defaultdict(list)
+        bms_grouped_items = defaultdict(list)
         for item in filtered_data:
-            b = item['bms']
-            if b in single_bms:
-                single_bms_dict[b].append(item)
+            bms_full = item['bms']
+            if bms_full and bms_full != "미상":
+                bms_grouped_items[bms_full].append(item)
 
-        for bms_name, items in single_bms_dict.items():
-            cleaned_bms = clean_name_symbols(bms_name)
-            st.markdown(f"**🔹 {bms_name}** (1두)")
+        # 2두 이상 범례(nick_bms)별로 순회하며 파란색 자마 추출
+        for bms_name in nick_bms:
+            items = bms_grouped_items[bms_name]
+            blue_progenies = []
             for item in items:
-                dam_display = clean_name_symbols(item['dam']) if item['dam'] and item['dam'] != "미상" else "미상"
                 child_name = item['progeny']
-                
                 g1_match = g1_pattern.search(child_name)
                 is_high_g1 = bool(g1_match and int(g1_match.group(1)) >= 7)
                 is_daughter = '암)' in child_name
                 is_elite_daughter = ('@' in child_name or '#' in child_name or '＠' in child_name or '＃' in child_name or '*' in child_name) and is_daughter
                 is_high_g1_son = is_high_g1 and not is_daughter
+                
+                if is_elite_daughter or is_high_g1_son:
+                    blue_progenies.append(item)
 
-                if highlight_special_progeny:
-                    if is_high_g1_son:
-                        child_display = f"<span class='highlight-g1-son'>{child_name}</span>"
-                    elif is_elite_daughter:
-                        child_display = f"<span class='highlight-elite-daughter'>{child_name}</span>"
-                    else:
-                        child_display = child_name
-                else:
-                    child_display = child_name
+            if blue_progenies:
+                st.markdown(f"**🔹 {bms_name}** ({len(blue_progenies)}두 추출)")
+                for item in blue_progenies:
+                    dam_display = clean_name_symbols(item['dam']) if item['dam'] and item['dam'] != "미상" else "미상"
+                    child_name = item['progeny']
+                    st.markdown(f"&nbsp;&nbsp;&nbsp;&nbsp;- <span class='highlight-elite-daughter'>{child_name}</span> --- 🔗 (모마: {dam_display})", unsafe_allow_html=True)
 
-                st.markdown(f"&nbsp;&nbsp;&nbsp;&nbsp;- {child_display} --- 🔗 (모마: {dam_display})")
+        # 3. 단독 출현 외조부마(1두) 중 파란색 자마 목록
+        if single_bms:
+            st.markdown("---")
+            st.markdown("### 📌 단독 출현 외조부마 (1두) 중 파란색 자마 목록")
+            for bms_name in single_bms:
+                items = bms_grouped_items[bms_name]
+                for item in items:
+                    child_name = item['progeny']
+                    g1_match = g1_pattern.search(child_name)
+                    is_high_g1 = bool(g1_match and int(g1_match.group(1)) >= 7)
+                    is_daughter = '암)' in child_name
+                    is_elite_daughter = ('@' in child_name or '#' in child_name or '＠' in child_name or '＃' in child_name or '*' in child_name) and is_daughter
+                    is_high_g1_son = is_high_g1 and not is_daughter
+                    
+                    if is_elite_daughter or is_high_g1_son:
+                        dam_display = clean_name_symbols(item['dam']) if item['dam'] and item['dam'] != "미상" else "미상"
+                        st.markdown(f"**🔹 {bms_name} (1두)**")
+                        st.markdown(f"&nbsp;&nbsp;&nbsp;&nbsp;- <span class='highlight-elite-daughter'>{child_name}</span> --- 🔗 (모마: {dam_display})", unsafe_allow_html=True)
 
 # =========================================================================
 # [탭 2] 외조부마(BMS) 관점 분석 실행 결과 출력
