@@ -277,51 +277,49 @@ if "1." in view_mode:
         </div>
         """, unsafe_allow_html=True)
         
-        if nick_bms:
-            st.markdown("**🎨 주요 외조부마(Nick BMS, 2두 이상) 범례:**")
-            bms_html = "<div style='display:flex; flex-wrap:wrap; gap:8px; margin-bottom:15px;'>"
-            for b in nick_bms:
-                b_c, bg_c = nick_style_map[b]
-                cnt = bms_counts[b]
-                bms_html += f"<span style='background-color:{bg_c}; color:{b_c}; border:1px solid {b_c}; padding:4px 10px; border-radius:6px; font-weight:bold; font-size:0.9em;'>{clean_name_symbols(b)} ({cnt}두)</span>"
-            bms_html += "</div>"
-            st.markdown(bms_html, unsafe_allow_html=True)
-            
-        # 1. 주요 외조부마 범례별 파란색(특수) 자마 상세 목록 (상단 배치)
-        st.markdown("---")
-        st.markdown("### 🔍 주요 외조부마 범례별 파란색(특수) 자마 상세 목록")
-        
         bms_grouped_items = defaultdict(list)
         for item in filtered_data:
             bms_full = item['bms']
             if bms_full and bms_full != "미상":
                 bms_grouped_items[bms_full].append(item)
 
-        for bms_name in nick_bms:
-            items = bms_grouped_items[bms_name]
-            blue_progenies = []
-            for item in items:
-                child_name = item['progeny']
-                g1_match = g1_pattern.search(child_name)
-                is_high_g1 = bool(g1_match and int(g1_match.group(1)) >= 7)
-                is_daughter = '암)' in child_name
-                is_elite_daughter = ('@' in child_name or '#' in child_name or '＠' in child_name or '＃' in child_name or '*' in child_name) and is_daughter
-                is_high_g1_son = is_high_g1 and not is_daughter
+        # 1. 주요 외조부마(Nick BMS, 2두 이상) 범례 + 각 범례 아래에 파란색 자마 목록 직접 기재
+        if nick_bms:
+            st.markdown("**🎨 주요 외조부마(Nick BMS, 2두 이상) 범례 및 파란색(특수) 자마 목록:**")
+            for bms_name in nick_bms:
+                b_c, bg_c = nick_style_map[bms_name]
+                cnt = bms_counts[bms_name]
                 
-                if is_elite_daughter or is_high_g1_son:
-                    blue_progenies.append(item)
-
-            if blue_progenies:
-                st.markdown(f"**🔹 {bms_name}** ({len(blue_progenies)}두 추출)")
-                for item in blue_progenies:
-                    dam_display = clean_name_symbols(item['dam']) if item['dam'] and item['dam'] != "미상" else "미상"
+                # 범례 배지 출력 (원래 디자인/색상 유지)
+                badge_html = f"<div style='margin-top: 10px;'><span style='background-color:{bg_c}; color:{b_c}; border:1px solid {b_c}; padding:4px 10px; border-radius:6px; font-weight:bold; font-size:0.95em;'>{clean_name_symbols(bms_name)} ({cnt}두)</span></div>"
+                st.markdown(badge_html, unsafe_allow_html=True)
+                
+                # 해당 외조부마의 자마 중 파란색(특수) 조건 만족하는 자마만 아래에 들여쓰기로 기재
+                items = bms_grouped_items[bms_name]
+                blue_progenies = []
+                for item in items:
                     child_name = item['progeny']
-                    st.markdown(f"&nbsp;&nbsp;&nbsp;&nbsp;- <span class='highlight-elite-daughter'>{child_name}</span> --- 🔗 (모마: {dam_display})", unsafe_allow_html=True)
+                    g1_match = g1_pattern.search(child_name)
+                    is_high_g1 = bool(g1_match and int(g1_match.group(1)) >= 7)
+                    is_daughter = '암)' in child_name
+                    is_elite_daughter = ('@' in child_name or '#' in child_name or '＠' in child_name or '＃' in child_name or '*' in child_name) and is_daughter
+                    is_high_g1_son = is_high_g1 and not is_daughter
+                    
+                    if is_elite_daughter or is_high_g1_son:
+                        blue_progenies.append(item)
+                
+                if blue_progenies:
+                    for item in blue_progenies:
+                        dam_display = clean_name_symbols(item['dam']) if item['dam'] and item['dam'] != "미상" else "미상"
+                        child_name = item['progeny']
+                        st.markdown(f"&nbsp;&nbsp;&nbsp;&nbsp;↳ <span class='highlight-elite-daughter'>{child_name}</span> --- 🔗 (모마: {dam_display})", unsafe_allow_html=True)
+                else:
+                    st.markdown(f"&nbsp;&nbsp;&nbsp;&nbsp;↳ <span style='color: #888; font-style: italic;'>조건을 만족하는 파란색 자마 없음</span>", unsafe_allow_html=True)
 
-        # 2. 단독 출현 외조부마(1두) 중 파란색 자마 목록 (범례별 상세 목록 바로 아래 배치)
+        # 2. 단독 출현 외조부마(1두) 목록 (그 바로 아래에 배치)
         if single_bms:
             st.markdown("---")
-            st.markdown("### 📌 단독 출현 외조부마 (1두) 중 파란색 자마 목록")
+            st.markdown("### 📌 단독 출현 외조부마 (1두) 목록")
             for bms_name in single_bms:
                 items = bms_grouped_items[bms_name]
                 blue_progenies_single = []
@@ -341,7 +339,7 @@ if "1." in view_mode:
                     for item in blue_progenies_single:
                         dam_display = clean_name_symbols(item['dam']) if item['dam'] and item['dam'] != "미상" else "미상"
                         child_name = item['progeny']
-                        st.markdown(f"&nbsp;&nbsp;&nbsp;&nbsp;- <span class='highlight-elite-daughter'>{child_name}</span> --- 🔗 (모마: {dam_display})", unsafe_allow_html=True)
+                        st.markdown(f"&nbsp;&nbsp;&nbsp;&nbsp;↳ <span class='highlight-elite-daughter'>{child_name}</span> --- 🔗 (모마: {dam_display})", unsafe_allow_html=True)
 
         # 3. 기존 전체 자마 리스트 및 외조부마 매칭 (하단 배치)
         st.markdown("---")
