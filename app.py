@@ -180,69 +180,21 @@ def analyze_sire_perspective(root, target_sire_query, id_to_text, id_to_parent_t
                 dam_name = "미상"
                 bms_name = "미상"
 
-                target_dam_id = None
-                if child_id in forward_arrows:
-                    target_dam_id = forward_arrows[child_id][0]
-                elif child_id in backward_arrows:
-                    target_dam_id = backward_arrows[child_id][0]
+               target_dam_id = None
+if child_id in forward_arrows:
+    target_dam_id = forward_arrows[child_id][0]
+elif child_id in backward_arrows:
+    target_dam_id = backward_arrows[child_id][0]
 
-              if target_dam_id and target_dam_id in id_to_text:def analyze_sire_perspective(root, target_sire_query, id_to_text, id_to_parent_text):
-    query_norm = normalize_name(target_sire_query)
-    results = []
+if target_dam_id and target_dam_id in id_to_text:
+    potential_dam = id_to_text[target_dam_id]
+    # 한글 모마도 허용
+    if (query_norm not in normalize_name(potential_dam)) and is_valid_mare(potential_dam):
+        dam_name = potential_dam
+        potential_bms = id_to_parent_text.get(target_dam_id, "미상")
+        if potential_bms and potential_bms != "Unknown" and query_norm not in normalize_name(potential_bms):
+            bms_name = potential_bms
 
-    forward_arrows = defaultdict(list)
-    backward_arrows = defaultdict(list)
-    
-    for node in root.iter('node'):
-        src_id = node.get('ID')
-        if not src_id:
-            continue
-        for arrow in node.findall('arrowlink'):
-            dest_id = arrow.get('DESTINATION')
-            if dest_id:
-                forward_arrows[src_id].append(dest_id)
-                backward_arrows[dest_id].append(src_id)
-
-    def traverse(node):
-        my_text = node.get('TEXT', '')
-        if query_norm in normalize_name(my_text):
-            for child in node.findall('node'):
-                child_text = child.get('TEXT', '')
-                child_id = child.get('ID')
-                if not child_text:
-                    continue
-
-                dam_name = "미상"
-                bms_name = "미상"
-
-                target_dam_id = None
-                if child_id in forward_arrows:
-                    target_dam_id = forward_arrows[child_id][0]
-                elif child_id in backward_arrows:
-                    target_dam_id = backward_arrows[child_id][0]
-
-                if target_dam_id and target_dam_id in id_to_text:
-                    potential_dam = id_to_text[target_dam_id]
-                    # 한글 모마도 허용
-                    if (query_norm not in normalize_name(potential_dam)) and is_valid_mare(potential_dam):
-                        dam_name = potential_dam
-                        potential_bms = id_to_parent_text.get(target_dam_id, "미상")
-                        if potential_bms and potential_bms != "Unknown" and query_norm not in normalize_name(potential_bms):
-                            bms_name = potential_bms
-
-                results.append({
-                    'progeny': child_text.strip(),
-                    'dam': dam_name.strip(),
-                    'bms': bms_name.strip()
-                })
-
-        for child in node.findall('node'):
-            traverse(child)
-
-    traverse(root)
-    return results
-
-   
 
 
                 results.append({
@@ -621,5 +573,4 @@ else:
                     father_display = f"<b>{father_name}</b>"
                     
                 st.markdown(f"<div class='progeny-item'>🔗 [연결 자마] {child_display} (부마: {father_display})</div>", unsafe_allow_html=True)
-
 
