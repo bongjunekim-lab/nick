@@ -18,10 +18,7 @@ def clean_and_normalize_text(text):
     """
     if not text:
         return ""
-    # '@', '#', '*', '모마' 및 한글, 영문, 숫자, 공백, 콜론(:)을 제외한 나머지 특수문자를 공백으로 치환
-    # (주의: @, #, * 기호와 '모마' 단어는 정규식 범위에서 완전히 보호됩니다)
     cleaned = re.sub(r'[^가-힣a-zA-Z0-9\s@#*:]', ' ', text)
-    # 연속된 공백 압축
     return re.sub(r'\s+', ' ', cleaned).strip()
 
 def normalize_name(text):
@@ -110,23 +107,31 @@ def load_mindmap_data():
         id_to_parent_text = {}
         id_to_node = {}
         
+        # 부모-자식 관계에서 형제 노드 순서(인접 데이터) 파악을 위한 맵핑 추가
+        parent_to_children = {}
+        
         for parent in root.iter('node'):
+            p_id = parent.get('ID')
             p_text = parent.get('TEXT', 'Unknown')
-            for child in parent.findall('node'):
+            children = parent.findall('node')
+            if p_id:
+                parent_to_children[p_id] = children
+                
+            for child in children:
                 c_id = child.get('ID')
                 if c_id:
                     id_to_text[c_id] = child.get('TEXT', '')
                     id_to_parent_text[c_id] = p_text
                     id_to_node[c_id] = child
                     
-        return root, id_to_text, id_to_parent_text, id_to_node, None
+        return root, id_to_text, id_to_parent_text, id_to_node, parent_to_children, None
     except Exception as e:
-        return None, None, None, None, f"파일 분석 오류: {str(e)}"
+        return None, None, None, None, None, f"파일 분석 오류: {str(e)}"
 
 # -------------------------------------------------------------------------
-# [관점 1] 씨수말 전수조사 분석 함수 (모마 및 외조부마 화살표 연쇄 추적 정밀 보완)
+# [관점 1] 씨수말 전수조사 분석 함수 (모마 찾은 후 바로 앞 데이터 1개를 외조부마로 지정)
 # -------------------------------------------------------------------------
-def analyze_sire_perspective(root, target_sire_query, id_to_text, id_to_parent_text, id_to_node):
+def analyze_sire_perspective(root, target_sire_query, id_to_text, id_to_parent_text, id_to_node, parent_to_children):
     query_norm = normalize_name(target_sire_query)
     results = []
 
@@ -183,29 +188,26 @@ def analyze_sire_perspective(root, target_sire_query, id_to_text, id_to_parent_t
                     if normalize_name(child_text) != normalize_name(potential_dam):
                         dam_name = potential_dam
 
-                        # 2. 외조부마(BMS) 찾기: 모마 노드(target_dam_id)에서 나가는 화살표 우선 추적 (컬린 등 복합 구조 대응)
-                        bms_found = False
-                        if target_dam_id in forward_arrows:
-                            for b_id in forward_arrows[target_dam_id]:
-                                if b_id in id_to_text:
-                                    b_text = id_to_text[b_id]
-                                    if query_norm not in normalize_name(b_text):
-                                        bms_name = b_text
-                                        bms_found = True
-                                        break
-                        if not bms_found and target_dam_id in backward_arrows:
-                            for b_id in backward_arrows[target_dam_id]:
-                                if b_id in id_to_text:
-                                    b_text = id_to_text[b_id]
-                                    if query_norm not in normalize_name(b_text):
-                                        bms_name = b_text
-                                        bms_found = True
-                                        break
-
-                        # 화살표가 없다면 기존 방식대로 XML 트리 부모 참고
-                        if not bms_found:
+                        # 2. 외조부마 찾기: 모마 노드를 찾았을 때, 그 모마 노드 기준 "바로 앞(이전 순서)의 데이터 1개"를 외조부마로 지정
+                        # 마인드맵 형제 노드 리스트에서 target_dam_id의 인덱스를 찾아 바로 앞 요소 확인
+                        dam_node = id_to_node.get(target_dam_id)
+                        if dam_node is not None:
+                            # dam_node의 부모를 찾기 위해 부모 노드 목록 순회 또는 부모 ID 추적
+                            for p_node in root.iter('node'):
+                                siblings = p_node.findall('node')
+                                if dam_node in siblings:
+                                    idx = siblings.index(dam_node)
+                                    if idx > 0:  # 바로 앞에 데이터가 존재한다면
+                                        prev_sibling = siblings[idx - 1]
+                                        prev_text = prev_sibling.get('TEXT', '')
+                                        if prev_text and query_norm not in normalize_name(prev_text):
+                                            bms_name = prev_text
+                                    break
+                        
+                        # 만약 형제 노드 탐색으로 못 찾았을 경우 기존 부모 정보 대비책 활용
+                        if bms_name == "미상":
                             p_bms = id_to_parent_text.get(target_dam_id, "미상")
-                            if p_bms and p_bms != "Unknown":
+                            if p_bms and p_bms != "Unknown" and query_norm not in normalize_name(p_bms):
                                 bms_name = p_bms
 
                 # 자기 참조 방어
@@ -214,7 +216,6 @@ def analyze_sire_perspective(root, target_sire_query, id_to_text, id_to_parent_t
                 if normalize_name(child_text) == normalize_name(bms_name):
                     bms_name = "미상"
 
-                # 3. 추출된 모마 및 외조부마 텍스트에 보호 규칙 적용 정제
                 cleaned_dam = clean_and_normalize_text(dam_name)
                 cleaned_bms = clean_and_normalize_text(bms_name)
 
@@ -279,7 +280,7 @@ def analyze_bms_perspective(root, target_sire_query, id_to_text, id_to_parent_te
 
 st.title("🐎 씨수말 & 외조부마(BMS) 통합 혈통 닉 분석기")
 
-root_node, id_to_text, id_to_parent_text, id_to_node, err = load_mindmap_data()
+root_node, id_to_text, id_to_parent_text, id_to_node, parent_to_children, err = load_mindmap_data()
 if err:
     st.error(err)
     st.stop()
@@ -317,7 +318,7 @@ if "1." in view_mode:
     st.subheader(f"1️⃣ 씨수말 [{sire_clean_name}] 관점 전수조사")
     st.caption("※ 씨수말이 배출한 아들·딸을 전수 나열하고, 연결선(arrowlink)이 있는 경우 모마와 외조부마(BMS)를 추적합니다.")
     
-    sire_data = analyze_sire_perspective(root_node, search_sire, id_to_text, id_to_parent_text, id_to_node)
+    sire_data = analyze_sire_perspective(root_node, search_sire, id_to_text, id_to_parent_text, id_to_node, parent_to_children)
     
     if not sire_data:
         st.warning("조건에 맞는 자마 데이터가 없습니다.")
