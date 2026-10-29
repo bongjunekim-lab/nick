@@ -180,24 +180,20 @@ def analyze_sire_perspective(root, target_sire_query, id_to_text, id_to_parent_t
                 dam_name = "미상"
                 bms_name = "미상"
 
-target_dam_id = None
-if child_id in forward_arrows:
-    target_dam_id = forward_arrows[child_id][0]
-elif child_id in backward_arrows:
-    target_dam_id = backward_arrows[child_id][0]
+                target_dam_id = None
+                if child_id in forward_arrows:
+                    target_dam_id = forward_arrows[child_id][0]
+                elif child_id in backward_arrows:
+                    target_dam_id = backward_arrows[child_id][0]
 
-if target_dam_id and target_dam_id in id_to_text:
-    potential_dam = id_to_text[target_dam_id]
-    # 한글 모마도 허용
-    if (query_norm not in normalize_name(potential_dam)) and is_valid_mare(potential_dam):
-        dam_name = potential_dam
-        potential_bms = id_to_parent_text.get(target_dam_id, "미상")
-        if potential_bms and potential_bms != "Unknown" and query_norm not in normalize_name(potential_bms):
-            bms_name = potential_bms
-
-
-
-
+                if target_dam_id and target_dam_id in id_to_text:
+                    potential_dam = id_to_text[target_dam_id]
+                    # 한글 모마도 허용
+                    if (query_norm not in normalize_name(potential_dam)) and is_valid_mare(potential_dam):
+                        dam_name = potential_dam
+                        potential_bms = id_to_parent_text.get(target_dam_id, "미상")
+                        if potential_bms and potential_bms != "Unknown" and query_norm not in normalize_name(potential_bms):
+                            bms_name = potential_bms
 
                 results.append({
                     'progeny': child_text.strip(),
@@ -205,8 +201,8 @@ if target_dam_id and target_dam_id in id_to_text:
                     'bms': bms_name.strip()
                 })
 
-        for child in node.findall('node'):
-            traverse(child)
+            for child in node.findall('node'):
+                traverse(child)
 
     traverse(root)
     return results
