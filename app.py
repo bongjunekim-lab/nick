@@ -181,57 +181,51 @@ def analyze_sire_perspective(root, target_sire_query, id_to_text, id_to_parent_t
     return results
 
 # -------------------------------------------------------------------------
-# [관점 2] 외조부마(BMS) 관점 분석 함수 (오류 완벽 수정 버전)
+# [관점 2] 외조부마(BMS) 관점 분석 함수 (기존 탐색 방식 복원 + 모마 동명 자마 필터링 적용)
 # -------------------------------------------------------------------------
 def analyze_bms_perspective(root, target_sire_query, id_to_text, id_to_parent_text):
     query_norm = normalize_name(target_sire_query)
     results = []
 
-    # 1. 전체 지도에서 각 모마(Dam ID)를 향하는 자마들의 ID 매핑 구축
-    dam_to_progeny_ids = defaultdict(list)
-    for node in root.iter('node'):
-        src_id = node.get('ID')
-        if not src_id:
-            continue
-        for arrow in node.findall('arrowlink'):
-            dest_id = arrow.get('DESTINATION')
-            if dest_id:
-                dam_to_progeny_ids[dest_id].append(src_id)
-
-    # 2. 대상 BMS(외조부마) 노드 ID들 탐색
-    bms_node_ids = set()
-    for node in root.iter('node'):
+    def traverse(node):
         my_text = node.get('TEXT', '')
         if query_norm in normalize_name(my_text):
-            bms_node_ids.add(node.get('ID'))
-
-    # 3. BMS 노드의 자식들 중 '암)'이 포함된 직계 딸들을 찾고, 이들을 모마로 갖는 실제 자마 연결
-    for node in root.iter('node'):
-        if node.get('ID') in bms_node_ids:
             for child in node.findall('node'):
-                daughter_text = child.get('TEXT', '')
-                daughter_id = child.get('ID')
-                if '암)' in daughter_text and daughter_id:
+                child_text = child.get('TEXT', '')
+                if '암)' in child_text:
                     progeny_list = []
+                    seen_ids = set()
                     seen_combos = set()
                     
-                    progeny_ids = dam_to_progeny_ids.get(daughter_id, [])
-                    for p_id in progeny_ids:
-                        if p_id in id_to_text:
-                            c_text = id_to_text[p_id]
-                            f_text = id_to_parent_text.get(p_id, "정보 없음")
+                    daughter_norm = normalize_name(child_text)
+
+                    for arrow in child.findall('arrowlink'):
+                        dest_id = arrow.get('DESTINATION')
+                        if dest_id in id_to_text and dest_id not in seen_ids:
+                            c_text = id_to_text[dest_id]
+                            f_text = id_to_parent_text.get(dest_id, "정보 없음")
                             
+                            # 모마와 자마의 이름이 동일한 경우 제외
+                            if normalize_name(c_text) == daughter_norm:
+                                seen_ids.add(dest_id)
+                                continue
+
                             combo_key = (c_text.strip(), f_text.strip())
                             if combo_key not in seen_combos:
                                 progeny_list.append({'child': c_text, 'father': f_text})
                                 seen_combos.add(combo_key)
                                 
+                            seen_ids.add(dest_id)
+                            
                     if progeny_list:
                         results.append({
-                            'daughter': daughter_text.strip(),
+                            'daughter': child_text.strip(),
                             'progeny': progeny_list
                         })
-                        
+        for child in node.findall('node'):
+            traverse(child)
+
+    traverse(root)
     return results
 
 # UI 화면 타이틀
@@ -410,7 +404,7 @@ if "1." in view_mode:
             st.markdown(f"<div class='progeny-item'>🐴 [{idx}] <b>{child_display}</b> {dam_str} {bms_style}</div>", unsafe_allow_html=True)
 
 # =========================================================================
-# [탭 2] 외조부마(BMS) 관점 분석 실행 결과 출력 (오류 수정 적용)
+# [탭 2] 외조부마(BMS) 관점 분석 실행 결과 출력
 # =========================================================================
 else:
     st.subheader(f"2️⃣ 외조부마(BMS) [{sire_clean_name}] 관점 분석")
