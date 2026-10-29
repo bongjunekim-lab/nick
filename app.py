@@ -190,7 +190,7 @@ def analyze_sire_perspective(root, target_sire_query, id_to_text, id_to_parent_t
                         if potential_bms and potential_bms != "Unknown" and query_norm not in normalize_name(potential_bms):
                             bms_name = potential_bms
 
-                # 2단계: 화살표로 찾지 못했거나 '미상'인 경우, 마인드맵 트리 계층 구조(부모/조상)를 통한 폴백 추적
+                # 2단계: 화살표로 찾지 못했거나 '미상'인 경우, 마인드맵 트리 계층 구조를 통한 폴백 추적
                 if dam_name == "미상" or bms_name == "미상":
                     parent_text = id_to_parent_text.get(child_id, "")
                     if parent_text and parent_text != "Unknown" and query_norm not in normalize_name(parent_text):
@@ -198,7 +198,6 @@ def analyze_sire_perspective(root, target_sire_query, id_to_text, id_to_parent_t
                             if dam_name == "미상":
                                 dam_name = parent_text
                         
-                    # 만약 여전히 dam_name이 채워졌는데 bms_name이 미상이라면 부모의 부모(조상)를 외조부마로 지정
                     if dam_name != "미상" and bms_name == "미상":
                         grand_parent = text_to_parent_text.get(dam_name.strip(), "")
                         if grand_parent and grand_parent != "Unknown" and query_norm not in normalize_name(grand_parent):
@@ -575,6 +574,3 @@ else:
                     father_display = f"<b>{father_name}</b>"
                     
                 st.markdown(f"<div class='progeny-item'>🔗 [연결 자마] {child_display} (부마: {father_display})</div>", unsafe_allow_html=True)
-
-    traverse(root)
-    return results
