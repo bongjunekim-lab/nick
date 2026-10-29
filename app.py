@@ -19,10 +19,17 @@ def normalize_name(text):
     return clean.strip().lower()
 
 def is_valid_mare(name):
-    """모마(직계 딸) 명칭이 유효한 암말인지 검증합니다."""
-    if '수)' in name or '수술' in name:
+    """
+    [엄격한 암말 검증 원칙]
+    - 앞의 특수기호(@, #, *, -, 가. 등)와 관계없이, 
+      문자열 내에 명시적인 한글 '암)' 글자가 없으면 무조건 수말(비암말)로 판정하여 제외합니다.
+    """
+    if not name:
         return False
-    return True
+    # 명시적인 '암)' 글자가 포함되어 있는지 여부만 엄격하게 확인
+    if '암)' in name:
+        return True
+    return False
 
 # 1. 페이지 설정
 st.set_page_config(page_title="씨수말 & 외조부마(BMS) 통합 혈통 닉 분석기", layout="wide")
@@ -168,6 +175,7 @@ def analyze_sire_perspective(root, target_sire_query, id_to_text, id_to_parent_t
 
                 if target_dam_id and target_dam_id in id_to_text:
                     potential_dam = id_to_text[target_dam_id]
+                    # '암)' 표기가 엄격히 검증된 유효한 암말만 모마로 인정
                     if query_norm not in normalize_name(potential_dam) and is_valid_mare(potential_dam):
                         dam_name = potential_dam
                         potential_bms = id_to_parent_text.get(target_dam_id, "미상")
@@ -198,7 +206,8 @@ def analyze_bms_perspective(root, target_sire_query, id_to_text, id_to_parent_te
         if query_norm in normalize_name(my_text):
             for child in node.findall('node'):
                 child_text = child.get('TEXT', '')
-                if '암)' in child_text and is_valid_mare(child_text):
+                # '암)' 표기가 명시적으로 존재해야만 직계 딸(종빈마)로 인정
+                if is_valid_mare(child_text):
                     progeny_list = []
                     seen_ids = set()
                     seen_combos = set()
@@ -215,7 +224,8 @@ def analyze_bms_perspective(root, target_sire_query, id_to_text, id_to_parent_te
                                 seen_ids.add(dest_id)
                                 continue
 
-                            if '수)' in c_text and not ('암' in c_text):
+                            # 자마 쪽에서도 '암)' 표기 누락되거나 수말인 경우 철저히 차단
+                            if not is_valid_mare(c_text):
                                 seen_ids.add(dest_id)
                                 continue
 
@@ -406,14 +416,14 @@ if "1." in view_mode:
             
             if item['bms'] in nick_style_map:
                 b_c, bg_c = nick_style_map[item['bms']]
-                bms_style = f"| <span style='color:{b_c}; background-color:{bg_c}; font-weight:bold; padding:2px 6px; border-radius:4px; border:1px solid {b_c}80; [외조부마: {bms_display}]</span>"
+                bms_style = f"| <span style='color:{b_c}; background-color:{bg_c}; font-weight:bold; padding:2px 6px; border-radius:4px; border:1px solid {b_c}80;'>[외조부마: {bms_display}]</span>"
             else:
                 bms_style = f"| [외조부마: {bms_display}]"
                 
             st.markdown(f"<div class='progeny-item'>🐴 [{idx}] <b>{child_display}</b> {dam_str} {bms_style}</div>", unsafe_allow_html=True)
 
 # =========================================================================
-# [탭 2] 외조부마(BMS) 관점 분석 실행 결과 출력 (1번 관점과 동일한 일관된 포맷 적용)
+# [탭 2] 외조부마(BMS) 관점 분석 실행 결과 출력
 # =========================================================================
 else:
     st.subheader(f"2️⃣ 외조부마(BMS) [{sire_clean_name}] 관점 분석")
@@ -455,7 +465,7 @@ else:
         </div>
         """, unsafe_allow_html=True)
 
-        # 1. 2두 이상 중복 교배 부마(Nick) 범례 및 파란색 자마 목록 (1번 관점과 동일한 ➔ 포맷 적용)
+        # 1. 2두 이상 중복 교배 부마(Nick) 범례 및 파란색 자마 목록
         if nick_sires:
             st.markdown("🎨 **중복 교배 부마(Nick) 하이라이트 범례 및 파란색(특수) 자마 목록:**")
             for ns in nick_sires:
@@ -486,7 +496,7 @@ else:
                 else:
                     st.markdown(f"&nbsp;&nbsp;&nbsp;&nbsp;↳ <span style='color: #888; font-style: italic;'>조건을 만족하는 파란색 자마 없음</span>", unsafe_allow_html=True)
 
-        # 2. 단독 출현 씨수말 목록 (1번 관점과 동일한 ➔ 포맷 적용)
+        # 2. 단독 출현 씨수말 목록
         if single_sires:
             st.markdown("---")
             st.markdown("### 📌 단독 출현 씨수말 목록")
@@ -553,3 +563,4 @@ else:
                     father_display = f"<b>{father_name}</b>"
                     
                 st.markdown(f"<div class='progeny-item'>🔗 [연결 자마] {child_display} (부마: {father_display})</div>", unsafe_allow_html=True)
+                
