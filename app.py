@@ -290,11 +290,9 @@ if "1." in view_mode:
                 b_c, bg_c = nick_style_map[bms_name]
                 cnt = bms_counts[bms_name]
                 
-                # 범례 배지 출력 (원래 디자인/색상 유지)
                 badge_html = f"<div style='margin-top: 10px;'><span style='background-color:{bg_c}; color:{b_c}; border:1px solid {b_c}; padding:4px 10px; border-radius:6px; font-weight:bold; font-size:0.95em;'>{clean_name_symbols(bms_name)} ({cnt}두)</span></div>"
                 st.markdown(badge_html, unsafe_allow_html=True)
                 
-                # 해당 외조부마의 자마 중 파란색(특수) 조건 만족하는 자마만 아래에 들여쓰기로 기재
                 items = bms_grouped_items[bms_name]
                 blue_progenies = []
                 for item in items:
@@ -316,7 +314,7 @@ if "1." in view_mode:
                 else:
                     st.markdown(f"&nbsp;&nbsp;&nbsp;&nbsp;↳ <span style='color: #888; font-style: italic;'>조건을 만족하는 파란색 자마 없음</span>", unsafe_allow_html=True)
 
-        # 2. 단독 출현 외조부마(1두) 목록 (그 바로 아래에 배치)
+        # 2. 단독 출현 외조부마(1두) 목록
         if single_bms:
             st.markdown("---")
             st.markdown("### 📌 단독 출현 외조부마 (1두) 목록")
@@ -393,10 +391,17 @@ else:
         st.warning(f"'{search_sire}'의 조건('암)' 표기 + 연결된 자마 보유)을 만족하는 직계 딸 데이터가 없습니다.")
     else:
         father_counts = defaultdict(int)
+        father_grouped_progenies = defaultdict(list)
 
         for item in bms_data:
+            daughter_name = item['daughter']
             for p in item['progeny']:
-                father_counts[p['father']] += 1
+                f_name = p['father']
+                father_counts[f_name] += 1
+                father_grouped_progenies[f_name].append({
+                    'daughter': daughter_name,
+                    'child': p['child']
+                })
 
         nick_sires = [father for father, count in father_counts.items() if count >= 2 and father != "정보 없음"]
 
@@ -414,18 +419,41 @@ else:
         </div>
         """, unsafe_allow_html=True)
 
+        # 1. 2두 이상 중복 교배 부마(Nick) 하이라이트 범례 + 각 범례 아래 파란색 자마 목록 직접 기재 (외조부마 관점)
         if nick_sires:
-            st.markdown("🎨 **중복 교배 부마(Nick) 하이라이트 범례:**")
-            legend_html = "<div style='display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 20px;'>"
+            st.markdown("🎨 **중복 교배 부마(Nick) 하이라이트 범례 및 파란색(특수) 자마 목록:**")
             for ns in nick_sires:
                 b_c, bg_c = nick_style_map[ns]
                 cnt = father_counts[ns]
-                legend_html += f"<span style='background-color:{bg_c}; color:{b_c}; border:1px solid {b_c}; font-weight:bold; padding:4px 10px; border-radius:6px; font-size:0.9em;'>{ns} ({cnt}두)</span>"
-            legend_html += "</div>"
-            st.markdown(legend_html, unsafe_allow_html=True)
+                
+                badge_html = f"<div style='margin-top: 10px;'><span style='background-color:{bg_c}; color:{b_c}; border:1px solid {b_c}; font-weight:bold; padding:4px 10px; border-radius:6px; font-size:0.95em;'>{ns} ({cnt}두)</span></div>"
+                st.markdown(badge_html, unsafe_allow_html=True)
+                
+                progenies = father_grouped_progenies[ns]
+                blue_progenies = []
+                for p in progenies:
+                    child_name = p['child']
+                    g1_match = g1_pattern.search(child_name)
+                    is_high_g1 = bool(g1_match and int(g1_match.group(1)) >= 7)
+                    is_daughter = '암)' in child_name
+                    is_elite_daughter = ('@' in child_name or '#' in child_name or '＠' in child_name or '＃' in child_name or '*' in child_name) and is_daughter
+                    is_high_g1_son = is_high_g1 and not is_daughter
+                    
+                    if is_elite_daughter or is_high_g1_son:
+                        blue_progenies.append(p)
+                
+                if blue_progenies:
+                    for p in blue_progenies:
+                        daughter_name = p['daughter']
+                        child_name = p['child']
+                        st.markdown(f"&nbsp;&nbsp;&nbsp;&nbsp;↳ 직계딸: {daughter_name} | 연결 자마: <span class='highlight-elite-daughter'>{child_name}</span>", unsafe_allow_html=True)
+                else:
+                    st.markdown(f"&nbsp;&nbsp;&nbsp;&nbsp;↳ <span style='color: #888; font-style: italic;'>조건을 만족하는 파란색 자마 없음</span>", unsafe_allow_html=True)
 
         st.markdown("---")
 
+        # 2. 기존 직계딸별 상세 리스트 (하단 배치)
+        st.markdown("### 📋 직계 딸별 자마 및 교배 부마 매칭")
         for idx, item in enumerate(bms_data, 1):
             daughter_name = item['daughter']
             progeny_list = item['progeny']
