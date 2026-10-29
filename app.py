@@ -21,11 +21,11 @@ def normalize_name(text):
 # 1. 페이지 설정
 st.set_page_config(page_title="씨수말 & 외조부마(BMS) 통합 혈통 닉 분석기", layout="wide")
 
-# CSS 스타일 정의
+# CSS 스타일 정의 (적색을 파란색 계열로 통일)
 st.markdown("""
     <style>
     .elite-mare {
-        color: #0077CC !important;
+        color: #0055CC !important;
         font-weight: bold;
         font-size: 1.25em;
         margin-top: 15px;
@@ -38,7 +38,7 @@ st.markdown("""
         font-size: 1.05em;
     }
     .premium-progeny {
-        color: #D32F2F !important;
+        color: #0055CC !important;
         font-weight: bold;
     }
     /* 암말 @, #, * 기호 진한 파란색 강조 */
@@ -210,7 +210,7 @@ if err:
 
 # 사이드바 설정 영역
 st.sidebar.header("🔍 검색 설정")
-search_sire = st.sidebar.text_input("씨수말 이름을 입력하세요", value="bernardini")
+search_sire = st.sidebar.text_input("씨수말 이름을 입력하세요", value="a.p. indy")
 
 st.sidebar.markdown("---")
 st.sidebar.markdown("### 🔀 분석 관점 선택")
@@ -261,8 +261,8 @@ if "1." in view_mode:
         nick_bms = [bms for bms, cnt in bms_counts.items() if cnt >= 2]
         single_bms = [bms for bms, cnt in bms_counts.items() if cnt == 1 and bms != "미상"]
         
-        bg_palette = ["#FFEBEE", "#E0F2F1", "#F3E5F5", "#E8F5E9", "#FBE9E7", "#FFFDE7", "#E1F5FE"]
-        border_palette = ["#D32F2F", "#00796B", "#7B1FA2", "#388E3C", "#E64A19", "#FBC02D", "#0288D1"]
+        bg_palette = ["#E3F2FD", "#E0F2F1", "#F3E5F5", "#E8F5E9", "#FBE9E7", "#FFFDE7", "#E1F5FE"]
+        border_palette = ["#0055CC", "#00796B", "#7B1FA2", "#388E3C", "#E64A19", "#FBC02D", "#0288D1"]
 
         nick_style_map = {}
         for idx, ns in enumerate(nick_bms):
@@ -272,7 +272,7 @@ if "1." in view_mode:
         <div class='info-box'>
             <b>전체 배출 자마 수:</b> {len(sire_data)}두 | 
             <b>현재 표시 자마 수:</b> {len(filtered_data)}두 | 
-            <b>중복 매칭된 외조부마(Nick BMS, 2두 이상):</b> <span style='color:#D32F2F; font-weight:bold;'>{len(nick_bms)}두</span> | 
+            <b>중복 매칭된 외조부마(Nick BMS, 2두 이상):</b> <span style='color:#0055CC; font-weight:bold;'>{len(nick_bms)}두</span> | 
             <b>단독 출현 외조부마(1두):</b> <span style='color:#0077CC; font-weight:bold;'>{len(single_bms)}두</span>
         </div>
         """, unsafe_allow_html=True)
@@ -283,7 +283,6 @@ if "1." in view_mode:
             if bms_full and bms_full != "미상":
                 bms_grouped_items[bms_full].append(item)
 
-        # 1. 주요 외조부마(Nick BMS, 2두 이상) 범례 + 각 범례 아래에 파란색 자마 목록 직접 기재
         if nick_bms:
             st.markdown("**🎨 주요 외조부마(Nick BMS, 2두 이상) 범례 및 파란색(특수) 자마 목록:**")
             for bms_name in nick_bms:
@@ -314,7 +313,6 @@ if "1." in view_mode:
                 else:
                     st.markdown(f"&nbsp;&nbsp;&nbsp;&nbsp;↳ <span style='color: #888; font-style: italic;'>조건을 만족하는 파란색 자마 없음</span>", unsafe_allow_html=True)
 
-        # 2. 단독 출현 외조부마(1두) 목록
         if single_bms:
             st.markdown("---")
             st.markdown("### 📌 단독 출현 외조부마 (1두) 목록")
@@ -339,7 +337,6 @@ if "1." in view_mode:
                         child_name = item['progeny']
                         st.markdown(f"&nbsp;&nbsp;&nbsp;&nbsp;↳ <span class='highlight-elite-daughter'>{child_name}</span> --- 🔗 (모마: {dam_display})", unsafe_allow_html=True)
 
-        # 3. 기존 전체 자마 리스트 및 외조부마 매칭 (하단 배치)
         st.markdown("---")
         st.markdown("### 📋 전체 자마 리스트 및 외조부마 매칭")
         for idx, item in enumerate(filtered_data, 1):
@@ -404,9 +401,10 @@ else:
                 })
 
         nick_sires = [father for father, count in father_counts.items() if count >= 2 and father != "정보 없음"]
+        single_sires = [father for father, count in father_counts.items() if count == 1 and father != "정보 없음"]
 
-        bg_palette = ["#FFEBEE", "#E0F2F1", "#F3E5F5", "#E8F5E9", "#FBE9E7", "#FFFDE7", "#E1F5FE"]
-        border_palette = ["#D32F2F", "#00796B", "#7B1FA2", "#388E3C", "#E64A19", "#FBC02D", "#0288D1"]
+        bg_palette = ["#E3F2FD", "#E0F2F1", "#F3E5F5", "#E8F5E9", "#FBE9E7", "#FFFDE7", "#E1F5FE"]
+        border_palette = ["#0055CC", "#00796B", "#7B1FA2", "#388E3C", "#E64A19", "#FBC02D", "#0288D1"]
 
         nick_style_map = {}
         for idx, ns in enumerate(nick_sires):
@@ -415,11 +413,12 @@ else:
         st.markdown(f"""
         <div class='info-box'>
             <b>조건 충족 직계 딸(종빈마):</b> 총 {len(bms_data)}두 | 
-            <b>중복 교배(Nick) 부마 수:</b> <span style='color:#D32F2F; font-weight:bold;'>{len(nick_sires)}두</span>
+            <b>중복 교배(Nick) 부마 수:</b> <span style='color:#0055CC; font-weight:bold;'>{len(nick_sires)}두</span> | 
+            <b>단독 출현 씨수말 수:</b> <span style='color:#0077CC; font-weight:bold;'>{len(single_sires)}두</span>
         </div>
         """, unsafe_allow_html=True)
 
-        # 1. 2두 이상 중복 교배 부마(Nick) 하이라이트 범례 + 각 범례 아래 파란색 자마 목록 직접 기재 (외조부마 관점)
+        # 1. 2두 이상 중복 교배 부마(Nick) 범례 및 파란색 자마 목록
         if nick_sires:
             st.markdown("🎨 **중복 교배 부마(Nick) 하이라이트 범례 및 파란색(특수) 자마 목록:**")
             for ns in nick_sires:
@@ -450,9 +449,34 @@ else:
                 else:
                     st.markdown(f"&nbsp;&nbsp;&nbsp;&nbsp;↳ <span style='color: #888; font-style: italic;'>조건을 만족하는 파란색 자마 없음</span>", unsafe_allow_html=True)
 
+        # 2. 단독 출현 씨수말 목록 (요청하신 대로 상단에 추가)
+        if single_sires:
+            st.markdown("---")
+            st.markdown("### 📌 단독 출현 씨수말 목록")
+            for ns in single_sires:
+                progenies = father_grouped_progenies[ns]
+                blue_progenies_single = []
+                for p in progenies:
+                    child_name = p['child']
+                    g1_match = g1_pattern.search(child_name)
+                    is_high_g1 = bool(g1_match and int(g1_match.group(1)) >= 7)
+                    is_daughter = '암)' in child_name
+                    is_elite_daughter = ('@' in child_name or '#' in child_name or '＠' in child_name or '＃' in child_name or '*' in child_name) and is_daughter
+                    is_high_g1_son = is_high_g1 and not is_daughter
+                    
+                    if is_elite_daughter or is_high_g1_son:
+                        blue_progenies_single.append(p)
+                
+                if blue_progenies_single:
+                    st.markdown(f"**🔹 {ns} (1두)**")
+                    for p in blue_progenies_single:
+                        daughter_name = p['daughter']
+                        child_name = p['child']
+                        st.markdown(f"&nbsp;&nbsp;&nbsp;&nbsp;↳ 직계딸: {daughter_name} | 연결 자마: <span class='highlight-elite-daughter'>{child_name}</span>", unsafe_allow_html=True)
+
         st.markdown("---")
 
-        # 2. 기존 직계딸별 상세 리스트 (하단 배치)
+        # 3. 기존 직계딸별 상세 리스트 (하단 배치)
         st.markdown("### 📋 직계 딸별 자마 및 교배 부마 매칭")
         for idx, item in enumerate(bms_data, 1):
             daughter_name = item['daughter']
