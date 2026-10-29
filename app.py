@@ -21,7 +21,7 @@ def normalize_name(text):
 # 1. 페이지 설정
 st.set_page_config(page_title="씨수말 & 외조부마(BMS) 통합 혈통 닉 분석기", layout="wide")
 
-# CSS 스타일 정의 (적색을 파란색 계열로 통일)
+# CSS 스타일 정의 (체크포인트 폰트 크기 확대 및 굵기 강조 반영)
 st.markdown("""
     <style>
     .elite-mare {
@@ -54,6 +54,20 @@ st.markdown("""
     .star-daughter {
         color: #000000 !important;
         font-weight: 900 !important;
+    }
+    /* 상단 범례 배지 폰트 확대 및 강조 */
+    .legend-badge {
+        font-size: 1.15em !important;
+        font-weight: bold !important;
+        padding: 6px 12px !important;
+        border-radius: 6px;
+        display: inline-block;
+    }
+    /* 단독 출현 씨수말 타이틀 폰트 확대 및 강조 */
+    .single-sire-title {
+        font-size: 1.15em !important;
+        font-weight: bold !important;
+        color: #004080 !important;
     }
     .info-box {
         background-color: #f0f2f6;
@@ -210,7 +224,7 @@ if err:
 
 # 사이드바 설정 영역
 st.sidebar.header("🔍 검색 설정")
-search_sire = st.sidebar.text_input("씨수말 이름을 입력하세요", value="a.p. indy")
+search_sire = st.sidebar.text_input("씨수말 이름을 입력하세요", value="danzig")
 
 st.sidebar.markdown("---")
 st.sidebar.markdown("### 🔀 분석 관점 선택")
@@ -289,7 +303,7 @@ if "1." in view_mode:
                 b_c, bg_c = nick_style_map[bms_name]
                 cnt = bms_counts[bms_name]
                 
-                badge_html = f"<div style='margin-top: 10px;'><span style='background-color:{bg_c}; color:{b_c}; border:1px solid {b_c}; padding:4px 10px; border-radius:6px; font-weight:bold; font-size:0.95em;'>{clean_name_symbols(bms_name)} ({cnt}두)</span></div>"
+                badge_html = f"<div style='margin-top: 10px;'><span class='legend-badge' style='background-color:{bg_c}; color:{b_c}; border:1px solid {b_c};'>{clean_name_symbols(bms_name)} ({cnt}두)</span></div>"
                 st.markdown(badge_html, unsafe_allow_html=True)
                 
                 items = bms_grouped_items[bms_name]
@@ -331,7 +345,7 @@ if "1." in view_mode:
                         blue_progenies_single.append(item)
                 
                 if blue_progenies_single:
-                    st.markdown(f"**🔹 {bms_name} (1두)**")
+                    st.markdown(f"<span class='single-sire-title'>🔹 {bms_name} (1두)</span>", unsafe_allow_html=True)
                     for item in blue_progenies_single:
                         dam_display = clean_name_symbols(item['dam']) if item['dam'] and item['dam'] != "미상" else "미상"
                         child_name = item['progeny']
@@ -418,14 +432,14 @@ else:
         </div>
         """, unsafe_allow_html=True)
 
-        # 1. 2두 이상 중복 교배 부마(Nick) 범례 및 파란색 자마 목록
+        # 1. 2두 이상 중복 교배 부마(Nick) 범례 및 파란색 자마 목록 (폰트 확대/굵기 적용)
         if nick_sires:
             st.markdown("🎨 **중복 교배 부마(Nick) 하이라이트 범례 및 파란색(특수) 자마 목록:**")
             for ns in nick_sires:
                 b_c, bg_c = nick_style_map[ns]
                 cnt = father_counts[ns]
                 
-                badge_html = f"<div style='margin-top: 10px;'><span style='background-color:{bg_c}; color:{b_c}; border:1px solid {b_c}; font-weight:bold; padding:4px 10px; border-radius:6px; font-size:0.95em;'>{ns} ({cnt}두)</span></div>"
+                badge_html = f"<div style='margin-top: 10px;'><span class='legend-badge' style='background-color:{bg_c}; color:{b_c}; border:1px solid {b_c};'>{ns} ({cnt}두)</span></div>"
                 st.markdown(badge_html, unsafe_allow_html=True)
                 
                 progenies = father_grouped_progenies[ns]
@@ -449,7 +463,7 @@ else:
                 else:
                     st.markdown(f"&nbsp;&nbsp;&nbsp;&nbsp;↳ <span style='color: #888; font-style: italic;'>조건을 만족하는 파란색 자마 없음</span>", unsafe_allow_html=True)
 
-        # 2. 단독 출현 씨수말 목록 (요청하신 대로 상단에 추가)
+        # 2. 단독 출현 씨수말 목록 (폰트 확대/굵기 적용)
         if single_sires:
             st.markdown("---")
             st.markdown("### 📌 단독 출현 씨수말 목록")
@@ -468,7 +482,7 @@ else:
                         blue_progenies_single.append(p)
                 
                 if blue_progenies_single:
-                    st.markdown(f"**🔹 {ns} (1두)**")
+                    st.markdown(f"<span class='single-sire-title'>🔹 {ns} (1두)</span>", unsafe_allow_html=True)
                     for p in blue_progenies_single:
                         daughter_name = p['daughter']
                         child_name = p['child']
