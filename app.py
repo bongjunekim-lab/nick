@@ -18,22 +18,11 @@ def normalize_name(text):
     clean = clean.split('(')[0]
     return clean.strip().lower()
 
-def is_valid_mare(name):
-    """
-    [안전하고 유연한 암말 검증 원칙]
-    - 마명 내에 '암' 글자가 포함되어 있으면 암말(직계딸)로 인정합니다.
-    - 단, 명백한 수말(수) 표기가 단독으로 강조된 경우는 제외합니다.
-    """
+def is_valid_mare_general(name):
+    """기본 유연한 검증 (전체 데이터 로드용 - 데이터 유실 방지)"""
     if not name:
         return False
-    # 명백한 수말 표기가 있는 경우는 차단
-    if '수)' in name and '암' not in name:
-        return False
-    # '암' 글자가 포함되어 있으면 정상적인 암말(직계딸)로 통과
-    if '암' in name or '암)' in name:
-        return True
-    # 기본적으로 기호나 형태상 암말 범주에 속하는 경우 허용하되, 명백한 수말 씨수말 이름은 차단
-    if 'speightstown' in name.lower() or 'sire' in name.lower():
+    if 'speightstown' in name.lower():
         return False
     return True
 
@@ -181,7 +170,7 @@ def analyze_sire_perspective(root, target_sire_query, id_to_text, id_to_parent_t
 
                 if target_dam_id and target_dam_id in id_to_text:
                     potential_dam = id_to_text[target_dam_id]
-                    if query_norm not in normalize_name(potential_dam) and is_valid_mare(potential_dam):
+                    if query_norm not in normalize_name(potential_dam) and is_valid_mare_general(potential_dam):
                         dam_name = potential_dam
                         potential_bms = id_to_parent_text.get(target_dam_id, "미상")
                         if potential_bms and potential_bms != "Unknown" and query_norm not in normalize_name(potential_bms):
@@ -200,7 +189,7 @@ def analyze_sire_perspective(root, target_sire_query, id_to_text, id_to_parent_t
     return results
 
 # -------------------------------------------------------------------------
-# [관점 2] 외조부마(BMS) 관점 분석 함수
+# [관점 2] 외조부마(BMS) 관점 분석 함수 (전면 보존)
 # -------------------------------------------------------------------------
 def analyze_bms_perspective(root, target_sire_query, id_to_text, id_to_parent_text):
     query_norm = normalize_name(target_sire_query)
@@ -211,8 +200,7 @@ def analyze_bms_perspective(root, target_sire_query, id_to_text, id_to_parent_te
         if query_norm in normalize_name(my_text):
             for child in node.findall('node'):
                 child_text = child.get('TEXT', '')
-                # 유효한 암말 검증 통과 항목만 직계 딸로 인정
-                if is_valid_mare(child_text):
+                if '암)' in child_text:
                     progeny_list = []
                     seen_ids = set()
                     seen_combos = set()
@@ -257,7 +245,7 @@ if err:
 
 # 사이드바 설정 영역
 st.sidebar.header("🔍 검색 설정")
-search_sire = st.sidebar.text_input("씨수말 이름을 입력하세요", value="a.p. indy")
+search_sire = st.sidebar.text_input("씨수말 이름을 입력하세요", value="storm cat")
 
 st.sidebar.markdown("---")
 st.sidebar.markdown("### 🔀 분석 관점 선택")
@@ -330,6 +318,9 @@ if "1." in view_mode:
             if bms_full and bms_full != "미상":
                 bms_grouped_items[bms_full].append(item)
 
+        # -----------------------------------------------------------------
+        # [핵심 수정] View 1의 요약 범례 목록에서만 '암)' 표기가 필수인 조건 적용
+        # -----------------------------------------------------------------
         if nick_bms:
             st.markdown("**🎨 주요 외조부마(Nick BMS, 2두 이상) 범례 및 파란색(특수) 자마 목록:**")
             for bms_name in nick_bms:
@@ -345,9 +336,11 @@ if "1." in view_mode:
                     child_name = item['progeny']
                     g1_match = g1_pattern.search(child_name)
                     is_high_g1 = bool(g1_match and int(g1_match.group(1)) >= 7)
-                    is_daughter = '암' in child_name or '암)' in child_name
-                    is_elite_daughter = ('@' in child_name or '#' in child_name or '＠' in child_name or '＃' in child_name or '*' in child_name) and is_daughter
-                    is_high_g1_son = is_high_g1 and not is_daughter
+                    
+                    # [특수 자마 검증 시 '암)' 표기가 반드시 존재해야만 엘리트 암말로 인정 (Loves Only Me 등 누락 방지)]
+                    has_am_tag = '암)' in child_name
+                    is_elite_daughter = ('@' in child_name or '#' in child_name or '＠' in child_name or '＃' in child_name or '*' in child_name) and has_am_tag
+                    is_high_g1_son = is_high_g1 and not has_am_tag
                     
                     if is_elite_daughter or is_high_g1_son:
                         blue_progenies.append(item)
@@ -370,9 +363,10 @@ if "1." in view_mode:
                     child_name = item['progeny']
                     g1_match = g1_pattern.search(child_name)
                     is_high_g1 = bool(g1_match and int(g1_match.group(1)) >= 7)
-                    is_daughter = '암' in child_name or '암)' in child_name
-                    is_elite_daughter = ('@' in child_name or '#' in child_name or '＠' in child_name or '＃' in child_name or '*' in child_name) and is_daughter
-                    is_high_g1_son = is_high_g1 and not is_daughter
+                    
+                    has_am_tag = '암)' in child_name
+                    is_elite_daughter = ('@' in child_name or '#' in child_name or '＠' in child_name or '＃' in child_name or '*' in child_name) and has_am_tag
+                    is_high_g1_son = is_high_g1 and not has_am_tag
                     
                     if is_elite_daughter or is_high_g1_son:
                         blue_progenies_single.append(item)
@@ -393,9 +387,9 @@ if "1." in view_mode:
             child_name = item['progeny']
             g1_match = g1_pattern.search(child_name)
             is_high_g1 = bool(g1_match and int(g1_match.group(1)) >= 7)
-            is_daughter = '암' in child_name or '암)' in child_name
-            is_elite_daughter = ('@' in child_name or '#' in child_name or '＠' in child_name or '＃' in child_name or '*' in child_name) and is_daughter
-            is_high_g1_son = is_high_g1 and not is_daughter
+            has_am_tag = '암)' in child_name
+            is_elite_daughter = ('@' in child_name or '#' in child_name or '＠' in child_name or '＃' in child_name or '*' in child_name) and has_am_tag
+            is_high_g1_son = is_high_g1 and not has_am_tag
 
             if highlight_special_progeny:
                 if is_high_g1_son:
@@ -407,7 +401,7 @@ if "1." in view_mode:
             else:
                 if is_high_g1_son or is_elite_daughter:
                     child_display = f"<span class='premium-progeny'>{child_name}</span>"
-                elif '*' in child_name and is_daughter:
+                elif '*' in child_name and has_am_tag:
                     child_display = f"<span class='star-daughter'>{child_name}</span>"
                 else:
                     child_display = child_name
@@ -423,7 +417,7 @@ if "1." in view_mode:
             st.markdown(f"<div class='progeny-item'>🐴 [{idx}] <b>{child_display}</b> {dam_str} {bms_style}</div>", unsafe_allow_html=True)
 
 # =========================================================================
-# [탭 2] 외조부마(BMS) 관점 분석 실행 결과 출력
+# [탭 2] 외조부마(BMS) 관점 분석 실행 결과 출력 (전면 보존)
 # =========================================================================
 else:
     st.subheader(f"2️⃣ 외조부마(BMS) [{sire_clean_name}] 관점 분석")
@@ -465,7 +459,6 @@ else:
         </div>
         """, unsafe_allow_html=True)
 
-        # 1. 2두 이상 중복 교배 부마(Nick) 범례 및 파란색 자마 목록
         if nick_sires:
             st.markdown("🎨 **중복 교배 부마(Nick) 하이라이트 범례 및 파란색(특수) 자마 목록:**")
             for ns in nick_sires:
@@ -481,9 +474,9 @@ else:
                     child_name = p['child']
                     g1_match = g1_pattern.search(child_name)
                     is_high_g1 = bool(g1_match and int(g1_match.group(1)) >= 7)
-                    is_daughter = '암' in child_name or '암)' in child_name
-                    is_elite_daughter = ('@' in child_name or '#' in child_name or '＠' in child_name or '＃' in child_name or '*' in child_name) and is_daughter
-                    is_high_g1_son = is_high_g1 and not is_daughter
+                    has_am_tag = '암)' in child_name
+                    is_elite_daughter = ('@' in child_name or '#' in child_name or '＠' in child_name or '＃' in child_name or '*' in child_name) and has_am_tag
+                    is_high_g1_son = is_high_g1 and not has_am_tag
                     
                     if is_elite_daughter or is_high_g1_son:
                         blue_progenies.append(p)
@@ -496,7 +489,6 @@ else:
                 else:
                     st.markdown(f"&nbsp;&nbsp;&nbsp;&nbsp;↳ <span style='color: #888; font-style: italic;'>조건을 만족하는 파란색 자마 없음</span>", unsafe_allow_html=True)
 
-        # 2. 단독 출현 씨수말 목록
         if single_sires:
             st.markdown("---")
             st.markdown("### 📌 단독 출현 씨수말 목록")
@@ -507,9 +499,9 @@ else:
                     child_name = p['child']
                     g1_match = g1_pattern.search(child_name)
                     is_high_g1 = bool(g1_match and int(g1_match.group(1)) >= 7)
-                    is_daughter = '암' in child_name or '암)' in child_name
-                    is_elite_daughter = ('@' in child_name or '#' in child_name or '＠' in child_name or '＃' in child_name or '*' in child_name) and is_daughter
-                    is_high_g1_son = is_high_g1 and not is_daughter
+                    has_am_tag = '암)' in child_name
+                    is_elite_daughter = ('@' in child_name or '#' in child_name or '＠' in child_name or '＃' in child_name or '*' in child_name) and has_am_tag
+                    is_high_g1_son = is_high_g1 and not has_am_tag
                     
                     if is_elite_daughter or is_high_g1_son:
                         blue_progenies_single.append(p)
@@ -523,7 +515,6 @@ else:
 
         st.markdown("---")
 
-        # 3. 직계딸별 상세 리스트
         st.markdown("### 📋 직계 딸별 자마 및 교배 부마 매칭")
         for idx, item in enumerate(bms_data, 1):
             daughter_name = item['daughter']
@@ -537,9 +528,9 @@ else:
                 
                 g1_match = g1_pattern.search(child_name)
                 is_high_g1 = bool(g1_match and int(g1_match.group(1)) >= 7)
-                is_daughter = '암' in child_name or '암)' in child_name
-                is_elite_daughter = ('@' in child_name or '#' in child_name or '＠' in child_name or '＃' in child_name or '*' in child_name) and is_daughter
-                is_high_g1_son = is_high_g1 and not is_daughter
+                has_am_tag = '암)' in child_name
+                is_elite_daughter = ('@' in child_name or '#' in child_name or '＠' in child_name or '＃' in child_name or '*' in child_name) and has_am_tag
+                is_high_g1_son = is_high_g1 and not has_am_tag
                 
                 if highlight_special_progeny:
                     if is_high_g1_son:
@@ -551,7 +542,7 @@ else:
                 else:
                     if is_high_g1_son or is_elite_daughter:
                         child_display = f"<span class='premium-progeny'>{child_name}</span>"
-                    elif '*' in child_name and is_daughter:
+                    elif '*' in child_name and has_am_tag:
                         child_display = f"<span class='star-daughter'>{child_name}</span>"
                     else:
                         child_display = child_name
