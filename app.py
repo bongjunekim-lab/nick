@@ -1,5 +1,3 @@
-닉스 파악확정
-
 import streamlit as st
 import xml.etree.ElementTree as ET
 import re
