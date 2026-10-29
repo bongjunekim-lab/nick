@@ -135,7 +135,7 @@ def load_mindmap_data():
         return None, None, None, None, f"파일 분석 오류: {str(e)}"
 
 # -------------------------------------------------------------------------
-# [관점 1] 씨수말/외조부마 전수조사 (외조부마 -> 직계 딸(모마) -> 자마 역방향 추적)
+# [관점 1] 외조부마/씨수말 관점 전수조사 (외조부마 -> 직계 딸(모마) -> 자마 정밀 추적)
 # -------------------------------------------------------------------------
 def analyze_sire_perspective(root, target_query, id_to_text, id_to_parent_text):
     query_norm = normalize_name(target_query)
@@ -154,29 +154,22 @@ def analyze_sire_perspective(root, target_query, id_to_text, id_to_parent_text):
                 forward_arrows[src_id].append(dest_id)
                 backward_arrows[dest_id].append(src_id)
 
-    parent_map = {}
-    for parent in root.iter('node'):
-        for child in parent.findall('node'):
-            c_id = child.get('ID')
-            if c_id:
-                parent_map[c_id] = parent
-
     def traverse(node):
         my_text = node.get('TEXT', '')
         if query_norm in normalize_name(my_text):
-            # 검색된 외조부마 노드의 하위(직계 딸들)를 순회
             for daughter_node in node.findall('node'):
                 daughter_text = daughter_node.get('TEXT', '')
                 daughter_id = daughter_node.get('ID')
                 if not daughter_text:
                     continue
                 
-                # 직계 딸(모마) 이름 추출
+                # 검색어 본인 노드이거나 설명글 형태인 경우는 직계 딸로 인정하지 않고 제외
+                if query_norm in normalize_name(daughter_text) or len(daughter_text.strip()) < 2:
+                    continue
+
                 dam_name = daughter_text.strip()
                 bms_name = my_text.strip()
 
-                # 이 직계 딸 노드 하위에 연결된 자마들 또는 화살표로 연결된 자마들 탐색
-                # 1. 화살표로 이 딸과 연결된 자마 찾기
                 linked_progenies = []
                 if daughter_id in forward_arrows:
                     for dest_id in forward_arrows[daughter_id]:
@@ -187,13 +180,11 @@ def analyze_sire_perspective(root, target_query, id_to_text, id_to_parent_text):
                         if src_id in id_to_text:
                             linked_progenies.append(id_to_text[src_id])
 
-                # 2. 하위 자식 노드로 딸린 자마들 찾기
                 for child_node in daughter_node.findall('node'):
                     c_text = child_node.get('TEXT', '')
                     if c_text and c_text not in linked_progenies:
                         linked_progenies.append(c_text)
 
-                # 만약 자마가 명시적으로 안 걸려있다면 직계 딸 자체를 하나의 항목으로도 표기 가능
                 if not linked_progenies:
                     results.append({
                         'progeny': f"{dam_name} (직계 딸 단독)",
