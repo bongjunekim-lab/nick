@@ -181,10 +181,10 @@ def analyze_sire_perspective(root, target_sire_query, id_to_text, id_to_parent_t
                 bms_name = "미상"
 
               target_dam_id = None
-if child_id in forward_arrows:
+    if child_id in forward_arrows:
     target_dam_id = forward_arrows[child_id][0]
-elif child_id in backward_arrows:
-    target_dam_id = backward_arrows[child_id][0]
+    elif child_id in backward_arrows:
+        target_dam_id = backward_arrows[child_id][0]
 
 if target_dam_id and target_dam_id in id_to_text:
     potential_dam = id_to_text[target_dam_id]
