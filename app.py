@@ -18,11 +18,12 @@ def normalize_name(text):
     clean = clean.split('(')[0]
     return clean.strip().lower()
 
-def is_valid_mare_general(name):
-    """기본 유연한 검증 (전체 데이터 로드용 - 데이터 유실 방지)"""
-    if not name:
+def is_valid_mare(name):
+    """모마 명칭에 유효한 암말 조건이 포함되어 있는지 검증합니다."""
+    if not name or name == "미상":
         return False
-    if 'speightstown' in name.lower():
+    # 명백한 수말 표기가 있는 경우 제외
+    if '수)' in name and '암' not in name:
         return False
     return True
 
@@ -49,12 +50,10 @@ st.markdown("""
         color: #0055CC !important;
         font-weight: bold;
     }
-    /* 암말 @, #, * 기호 진한 파란색 강조 */
     .highlight-elite-daughter {
         color: #0000FF !important;
         font-weight: 900 !important;
     }
-    /* 수말 G1-7두 이상 진한 파란색 강조 */
     .highlight-g1-son {
         color: #0000FF !important;
         font-weight: 900 !important;
@@ -63,7 +62,6 @@ st.markdown("""
         color: #000000 !important;
         font-weight: 900 !important;
     }
-    /* 상단 범례 배지 스타일 */
     .legend-badge {
         font-size: 1.15em !important;
         font-weight: bold !important;
@@ -71,7 +69,6 @@ st.markdown("""
         border-radius: 6px;
         display: inline-block;
     }
-    /* 단독 출현 항목 스타일 */
     .single-sire-title {
         font-size: 1.15em !important;
         font-weight: bold !important;
@@ -90,19 +87,11 @@ st.markdown("""
         border-radius: 8px;
         margin-bottom: 15px;
     }
-    .section-title {
-        color: #111111;
-        font-weight: bold;
-        font-size: 1.3em;
-        margin-top: 15px;
-        margin-bottom: 6px;
-    }
     </style>
 """, unsafe_allow_html=True)
 
 @st.cache_data
 def load_mindmap_data():
-    """xml/mm 파일 전체 노드 데이터 및 parent-child 맵핑 데이터 로드"""
     file_path = '우수한 경주마(수말, 암말).mm'
     if not os.path.exists(file_path):
         return None, None, None, None, f"'{file_path}' 파일을 찾을 수 없습니다."
@@ -170,7 +159,7 @@ def analyze_sire_perspective(root, target_sire_query, id_to_text, id_to_parent_t
 
                 if target_dam_id and target_dam_id in id_to_text:
                     potential_dam = id_to_text[target_dam_id]
-                    if query_norm not in normalize_name(potential_dam) and is_valid_mare_general(potential_dam):
+                    if query_norm not in normalize_name(potential_dam):
                         dam_name = potential_dam
                         potential_bms = id_to_parent_text.get(target_dam_id, "미상")
                         if potential_bms and potential_bms != "Unknown" and query_norm not in normalize_name(potential_bms):
@@ -189,7 +178,7 @@ def analyze_sire_perspective(root, target_sire_query, id_to_text, id_to_parent_t
     return results
 
 # -------------------------------------------------------------------------
-# [관점 2] 외조부마(BMS) 관점 분석 함수 (전면 보존)
+# [관점 2] 외조부마(BMS) 관점 분석 함수
 # -------------------------------------------------------------------------
 def analyze_bms_perspective(root, target_sire_query, id_to_text, id_to_parent_text):
     query_norm = normalize_name(target_sire_query)
@@ -235,7 +224,6 @@ def analyze_bms_perspective(root, target_sire_query, id_to_text, id_to_parent_te
     traverse(root)
     return results
 
-# UI 화면 타이틀
 st.title("🐎 씨수말 & 외조부마(BMS) 통합 혈통 닉 분석기")
 
 root_node, id_to_text, id_to_parent_text, id_to_node, err = load_mindmap_data()
@@ -243,7 +231,6 @@ if err:
     st.error(err)
     st.stop()
 
-# 사이드바 설정 영역
 st.sidebar.header("🔍 검색 설정")
 search_sire = st.sidebar.text_input("씨수말 이름을 입력하세요", value="storm cat")
 
@@ -319,7 +306,7 @@ if "1." in view_mode:
                 bms_grouped_items[bms_full].append(item)
 
         # -----------------------------------------------------------------
-        # [핵심 수정] View 1의 요약 범례 목록에서만 '암)' 표기가 필수인 조건 적용
+        # [핵심 수정] 요약 목록(범례/단독출현)에서 모마 정보가 누락되었거나 유효하지 않은 항목 엄격 제외
         # -----------------------------------------------------------------
         if nick_bms:
             st.markdown("**🎨 주요 외조부마(Nick BMS, 2두 이상) 범례 및 파란색(특수) 자마 목록:**")
@@ -333,11 +320,13 @@ if "1." in view_mode:
                 items = bms_grouped_items[bms_name]
                 blue_progenies = []
                 for item in items:
+                    # 모마 데이터가 '미상'이거나 정상적인 모마명 형식이 아니면 요약 목록에서 원천 배제
+                    if not is_valid_mare(item['dam']):
+                        continue
+                        
                     child_name = item['progeny']
                     g1_match = g1_pattern.search(child_name)
                     is_high_g1 = bool(g1_match and int(g1_match.group(1)) >= 7)
-                    
-                    # [특수 자마 검증 시 '암)' 표기가 반드시 존재해야만 엘리트 암말로 인정 (Loves Only Me 등 누락 방지)]
                     has_am_tag = '암)' in child_name
                     is_elite_daughter = ('@' in child_name or '#' in child_name or '＠' in child_name or '＃' in child_name or '*' in child_name) and has_am_tag
                     is_high_g1_son = is_high_g1 and not has_am_tag
@@ -347,7 +336,7 @@ if "1." in view_mode:
                 
                 if blue_progenies:
                     for item in blue_progenies:
-                        dam_display = clean_name_symbols(item['dam']) if item['dam'] and item['dam'] != "미상" else "미상"
+                        dam_display = clean_name_symbols(item['dam'])
                         child_name = item['progeny']
                         st.markdown(f"&nbsp;&nbsp;&nbsp;&nbsp;↳ <span class='highlight-elite-daughter'>{child_name}</span> --- 🔗 (모마: {dam_display})", unsafe_allow_html=True)
                 else:
@@ -360,10 +349,12 @@ if "1." in view_mode:
                 items = bms_grouped_items[bms_name]
                 blue_progenies_single = []
                 for item in items:
+                    if not is_valid_mare(item['dam']):
+                        continue
+                        
                     child_name = item['progeny']
                     g1_match = g1_pattern.search(child_name)
                     is_high_g1 = bool(g1_match and int(g1_match.group(1)) >= 7)
-                    
                     has_am_tag = '암)' in child_name
                     is_elite_daughter = ('@' in child_name or '#' in child_name or '＠' in child_name or '＃' in child_name or '*' in child_name) and has_am_tag
                     is_high_g1_son = is_high_g1 and not has_am_tag
@@ -374,7 +365,7 @@ if "1." in view_mode:
                 if blue_progenies_single:
                     st.markdown(f"<div style='margin-top: 10px;'><span class='single-sire-title'>{bms_name} (1두)</span></div>", unsafe_allow_html=True)
                     for item in blue_progenies_single:
-                        dam_display = clean_name_symbols(item['dam']) if item['dam'] and item['dam'] != "미상" else "미상"
+                        dam_display = clean_name_symbols(item['dam'])
                         child_name = item['progeny']
                         st.markdown(f"&nbsp;&nbsp;&nbsp;&nbsp;↳ <span class='highlight-elite-daughter'>{child_name}</span> --- 🔗 (모마: {dam_display})", unsafe_allow_html=True)
 
@@ -389,7 +380,7 @@ if "1." in view_mode:
             is_high_g1 = bool(g1_match and int(g1_match.group(1)) >= 7)
             has_am_tag = '암)' in child_name
             is_elite_daughter = ('@' in child_name or '#' in child_name or '＠' in child_name or '＃' in child_name or '*' in child_name) and has_am_tag
-            is_high_g1_son = is_high_g1 and not has_am_tag
+            is_high_g1_son = is_high_g1 and not is_daughter if 'is_daughter' in locals() else is_high_g1 and not has_am_tag
 
             if highlight_special_progeny:
                 if is_high_g1_son:
@@ -401,8 +392,6 @@ if "1." in view_mode:
             else:
                 if is_high_g1_son or is_elite_daughter:
                     child_display = f"<span class='premium-progeny'>{child_name}</span>"
-                elif '*' in child_name and has_am_tag:
-                    child_display = f"<span class='star-daughter'>{child_name}</span>"
                 else:
                     child_display = child_name
 
@@ -417,7 +406,7 @@ if "1." in view_mode:
             st.markdown(f"<div class='progeny-item'>🐴 [{idx}] <b>{child_display}</b> {dam_str} {bms_style}</div>", unsafe_allow_html=True)
 
 # =========================================================================
-# [탭 2] 외조부마(BMS) 관점 분석 실행 결과 출력 (전면 보존)
+# [탭 2] 외조부마(BMS) 관점 분석 실행 결과 출력
 # =========================================================================
 else:
     st.subheader(f"2️⃣ 외조부마(BMS) [{sire_clean_name}] 관점 분석")
@@ -542,8 +531,6 @@ else:
                 else:
                     if is_high_g1_son or is_elite_daughter:
                         child_display = f"<span class='premium-progeny'>{child_name}</span>"
-                    elif '*' in child_name and has_am_tag:
-                        child_display = f"<span class='star-daughter'>{child_name}</span>"
                     else:
                         child_display = child_name
 
