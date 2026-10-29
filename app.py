@@ -21,7 +21,7 @@ def normalize_name(text):
 # 1. 페이지 설정
 st.set_page_config(page_title="씨수말 & 외조부마(BMS) 통합 혈통 닉 분석기", layout="wide")
 
-# CSS 스타일 정의 (체크포인트 폰트 크기 확대 및 굵기 강조 반영)
+# CSS 스타일 정의 (단독 출현 목록 타이틀을 상단 배지와 동일한 크기와 스타일로 통일)
 st.markdown("""
     <style>
     .elite-mare {
@@ -55,7 +55,7 @@ st.markdown("""
         color: #000000 !important;
         font-weight: 900 !important;
     }
-    /* 상단 범례 배지 폰트 확대 및 강조 */
+    /* 상단 범례 배지 및 단독 출현 씨수말 항목 동일한 크기 적용 */
     .legend-badge {
         font-size: 1.15em !important;
         font-weight: bold !important;
@@ -63,11 +63,18 @@ st.markdown("""
         border-radius: 6px;
         display: inline-block;
     }
-    /* 단독 출현 씨수말 타이틀 폰트 확대 및 강조 */
+    /* 단독 출현 항목을 상단 배지와 동일한 스타일로 맞춤 */
     .single-sire-title {
         font-size: 1.15em !important;
         font-weight: bold !important;
-        color: #004080 !important;
+        padding: 6px 12px !important;
+        border-radius: 6px;
+        display: inline-block;
+        background-color: #E3F2FD !important;
+        color: #0055CC !important;
+        border: 1px solid #0055CC !important;
+        margin-top: 10px;
+        margin-bottom: 5px;
     }
     .info-box {
         background-color: #f0f2f6;
@@ -345,7 +352,7 @@ if "1." in view_mode:
                         blue_progenies_single.append(item)
                 
                 if blue_progenies_single:
-                    st.markdown(f"<span class='single-sire-title'>🔹 {bms_name} (1두)</span>", unsafe_allow_html=True)
+                    st.markdown(f"<div style='margin-top: 10px;'><span class='single-sire-title'>{bms_name} (1두)</span></div>", unsafe_allow_html=True)
                     for item in blue_progenies_single:
                         dam_display = clean_name_symbols(item['dam']) if item['dam'] and item['dam'] != "미상" else "미상"
                         child_name = item['progeny']
@@ -432,7 +439,7 @@ else:
         </div>
         """, unsafe_allow_html=True)
 
-        # 1. 2두 이상 중복 교배 부마(Nick) 범례 및 파란색 자마 목록 (폰트 확대/굵기 적용)
+        # 1. 2두 이상 중복 교배 부마(Nick) 범례 및 파란색 자마 목록
         if nick_sires:
             st.markdown("🎨 **중복 교배 부마(Nick) 하이라이트 범례 및 파란색(특수) 자마 목록:**")
             for ns in nick_sires:
@@ -463,7 +470,7 @@ else:
                 else:
                     st.markdown(f"&nbsp;&nbsp;&nbsp;&nbsp;↳ <span style='color: #888; font-style: italic;'>조건을 만족하는 파란색 자마 없음</span>", unsafe_allow_html=True)
 
-        # 2. 단독 출현 씨수말 목록 (폰트 확대/굵기 적용)
+        # 2. 단독 출현 씨수말 목록 (상단 배지와 완전히 동일한 크기/스타일 적용)
         if single_sires:
             st.markdown("---")
             st.markdown("### 📌 단독 출현 씨수말 목록")
@@ -482,7 +489,7 @@ else:
                         blue_progenies_single.append(p)
                 
                 if blue_progenies_single:
-                    st.markdown(f"<span class='single-sire-title'>🔹 {ns} (1두)</span>", unsafe_allow_html=True)
+                    st.markdown(f"<div style='margin-top: 10px;'><span class='single-sire-title'>{ns} (1두)</span></div>", unsafe_allow_html=True)
                     for p in blue_progenies_single:
                         daughter_name = p['daughter']
                         child_name = p['child']
@@ -529,4 +536,4 @@ else:
                 else:
                     father_display = f"<b>{father_name}</b>"
                     
-                st.markdown(f"<div class='progeny-item'>🔗 [연결 자마] {child_display} (부마: {father_display})</div>", unsafe_allow_html=True)
+                st.markdown(f"<div class='progeny-item'>🔗 [연결 자마] {child_display} (부마: {father_display})</div>", unsafe_allow_html=True) 
