@@ -107,7 +107,7 @@ def load_mindmap_data():
         return None, None, None, None, f"파일 분석 오류: {str(e)}"
 
 # -------------------------------------------------------------------------
-# [관점 1] 씨수말 전수조사 분석 함수 (화살표 규칙 반영 정밀 보완)
+# [관점 1] 씨수말 전수조사 분석 함수 (화살표 흐름 및 상호 연결 정밀 매핑)
 # -------------------------------------------------------------------------
 def analyze_sire_perspective(root, target_sire_query, id_to_text, id_to_parent_text):
     query_norm = normalize_name(target_sire_query)
@@ -138,7 +138,7 @@ def analyze_sire_perspective(root, target_sire_query, id_to_text, id_to_parent_t
                 dam_name = "미상"
                 bms_name = "미상"
 
-                # 자마 노드와 연결된 화살표 탐색
+                # 1. 자마 노드에 연결된 화살표 확인
                 linked_dest_id = None
                 if child_id in forward_arrows:
                     linked_dest_id = forward_arrows[child_id][0]
@@ -148,26 +148,33 @@ def analyze_sire_perspective(root, target_sire_query, id_to_text, id_to_parent_t
                 if linked_dest_id and linked_dest_id in id_to_text:
                     dest_text = id_to_text[linked_dest_id]
                     
-                    # 규칙 적용: 화살표가 가리키는 곳이 외조부마(씨수말)이거나 모마인 경우 분기 처리
+                    # CASE A: 목적지 노드가 씨암말(모마)인 경우
                     if '암)' in dest_text:
-                        # 목적지 자체가 모마인 경우
                         dam_name = dest_text
+                        # 모마의 부모가 외조부마(BMS)
                         parent_bms = id_to_parent_text.get(linked_dest_id, "미상")
                         if parent_bms and parent_bms != "Unknown":
                             bms_name = parent_bms
                     else:
-                        # 목적지가 외조부마(씨수말)이고, 그 화살표의 출발점(또는 자마의 부모)이 모마인 경우
+                        # CASE B: 목적지 노드가 외조부마(씨수말)인 경우 (예: Deputy Minister)
                         bms_name = dest_text
-                        # 자마 노드의 부모 텍스트를 모마로 우선 확인
+                        # 화살표의 출발점(또는 자마의 부모)이 모마가 됨
                         parent_dam = id_to_parent_text.get(child_id, "")
-                        if parent_dam and '암)' in parent_dam:
+                        if parent_dam and ('암)' in parent_dam or '무전적' in parent_dam):
                             dam_name = parent_dam
                         else:
-                            # 역방향 추적을 통해 모마 탐색
                             for b_id in backward_arrows[linked_dest_id]:
-                                if b_id in id_to_text and '암)' in id_to_text[b_id]:
-                                    dam_name = id_to_text[b_id]
-                                    break
+                                if b_id in id_to_text:
+                                    potential_dam = id_to_text[b_id]
+                                    if '암)' in potential_dam or query_norm not in normalize_name(potential_dam):
+                                        dam_name = potential_dam
+                                        break
+
+                # 만약 부모 텍스트(id_to_parent_text)에 모마 정보가 직접 명시되어 있는 경우 보완
+                if dam_name == "미상":
+                    parent_text = id_to_parent_text.get(child_id, "")
+                    if parent_text and '암)' in parent_text:
+                        dam_name = parent_text
 
                 # 자기 참조 방어
                 if normalize_name(child_text) == normalize_name(dam_name):
