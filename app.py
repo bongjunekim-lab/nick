@@ -151,7 +151,7 @@ def load_mindmap_data():
 # -------------------------------------------------------------------------
 # [관점 1] 씨수말 전수조사 분석 함수
 # -------------------------------------------------------------------------
- def analyze_sire_perspective(root, target_sire_query, id_to_text, id_to_parent_text):
+def analyze_sire_perspective(root, target_sire_query, id_to_text, id_to_parent_text):
     query_norm = normalize_name(target_sire_query)
     results = []
 
