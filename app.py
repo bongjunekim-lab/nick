@@ -151,6 +151,23 @@ def load_mindmap_data():
 # -------------------------------------------------------------------------
 # [관점 1] 씨수말 전수조사 분석 함수
 # -------------------------------------------------------------------------
+ def analyze_sire_perspective(root, target_sire_query, id_to_text, id_to_parent_text):
+    query_norm = normalize_name(target_sire_query)
+    results = []
+
+    forward_arrows = defaultdict(list)
+    backward_arrows = defaultdict(list)
+    
+    for node in root.iter('node'):
+        src_id = node.get('ID')
+        if not src_id:
+            continue
+        for arrow in node.findall('arrowlink'):
+            dest_id = arrow.get('DESTINATION')
+            if dest_id:
+                forward_arrows[src_id].append(dest_id)
+                backward_arrows[dest_id].append(src_id)
+
     def traverse(node):
         my_text = node.get('TEXT', '')
         if query_norm in normalize_name(my_text):
@@ -171,7 +188,6 @@ def load_mindmap_data():
 
                 if target_dam_id and target_dam_id in id_to_text:
                     potential_dam = id_to_text[target_dam_id]
-                    # 한글 모마도 허용
                     if (query_norm not in normalize_name(potential_dam)) and is_valid_mare(potential_dam):
                         dam_name = potential_dam
                         potential_bms = id_to_parent_text.get(target_dam_id, "미상")
@@ -186,6 +202,10 @@ def load_mindmap_data():
 
             for child in node.findall('node'):
                 traverse(child)
+
+    traverse(root)
+    return results
+
 # -------------------------------------------------------------------------
 # [관점 2] 외조부마(BMS) 관점 분석 함수
 # -------------------------------------------------------------------------
