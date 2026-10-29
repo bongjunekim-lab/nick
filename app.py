@@ -10,20 +10,13 @@ def clean_name_symbols(text):
     return cleaned.strip()
 
 def normalize_name(text):
-    """이름 정제 및 비교용 표준화 (영문/한글 모두 대응)"""
-    if not text:
-        return ""
+    """이름 정제 및 비교용 표준화"""
     clean = text.replace('@', '').replace('#', '').replace('*', '')
     clean = clean.replace('＠', '').replace('＃', '')
     clean = clean.replace('암)', '').replace('수)', '').replace('거)', '')
     clean = clean.replace('가.', '').replace('나.', '').replace('다.', '')
     clean = clean.split('(')[0]
-    # 영어는 소문자로 변환, 한글은 그대로 유지
-    if re.search(r'[a-zA-Z]', clean):
-        return clean.strip().lower()
-    else:
-        return clean.strip()
-
+    return clean.strip().lower()
 
 def is_valid_mare(name):
     """
@@ -188,8 +181,7 @@ def analyze_sire_perspective(root, target_sire_query, id_to_text, id_to_parent_t
 
                 if target_dam_id and target_dam_id in id_to_text:
                     potential_dam = id_to_text[target_dam_id]
-                    # 한글 모마도 허용
-                    if (query_norm not in normalize_name(potential_dam)) and is_valid_mare(potential_dam):
+                    if query_norm not in normalize_name(potential_dam) and is_valid_mare(potential_dam):
                         dam_name = potential_dam
                         potential_bms = id_to_parent_text.get(target_dam_id, "미상")
                         if potential_bms and potential_bms != "Unknown" and query_norm not in normalize_name(potential_bms):
@@ -201,8 +193,8 @@ def analyze_sire_perspective(root, target_sire_query, id_to_text, id_to_parent_t
                     'bms': bms_name.strip()
                 })
 
-            for child in node.findall('node'):
-                traverse(child)
+        for child in node.findall('node'):
+            traverse(child)
 
     traverse(root)
     return results
@@ -571,4 +563,5 @@ else:
                     father_display = f"<b>{father_name}</b>"
                     
                 st.markdown(f"<div class='progeny-item'>🔗 [연결 자마] {child_display} (부마: {father_display})</div>", unsafe_allow_html=True)
+
 
