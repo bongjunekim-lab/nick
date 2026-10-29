@@ -135,7 +135,7 @@ def load_mindmap_data():
         return None, None, None, None, f"파일 분석 오류: {str(e)}"
 
 # -------------------------------------------------------------------------
-# [관점 1] 씨수말 전수조사 분석 함수 (화살표 + 트리 계층 폴백 닉스 보완)
+# [관점 1] 씨수말 전수조사 분석 함수 (화살표 + 트리 계층 구조 추적 보완)
 # -------------------------------------------------------------------------
 def analyze_sire_perspective(root, target_sire_query, id_to_text, id_to_parent_text):
     query_norm = normalize_name(target_sire_query)
@@ -154,14 +154,13 @@ def analyze_sire_perspective(root, target_sire_query, id_to_text, id_to_parent_t
                 forward_arrows[src_id].append(dest_id)
                 backward_arrows[dest_id].append(src_id)
 
-    # 텍스트로 노드를 역추적하기 위한 역방향 맵 구성 (텍스트 -> 부모 텍스트)
-    text_to_parent_text = {}
+    # 전체 노드 구조에서 자식 ID -> 부모 노드 객체를 매핑하여 트리 계층을 완벽히 역추적
+    child_id_to_parent_node = {}
     for parent in root.iter('node'):
-        p_text = parent.get('TEXT', '')
         for child in parent.findall('node'):
-            c_text = child.get('TEXT', '')
-            if c_text and p_text:
-                text_to_parent_text[c_text.strip()] = p_text.strip()
+            c_id = child.get('ID')
+            if c_id:
+                child_id_to_parent_node[c_id] = parent
 
     def traverse(node):
         my_text = node.get('TEXT', '')
@@ -181,7 +180,7 @@ def analyze_sire_perspective(root, target_sire_query, id_to_text, id_to_parent_t
                 elif child_id in backward_arrows:
                     target_dam_id = backward_arrows[child_id][0]
 
-                # 1단계: 화살표 기반 매칭 시도
+                # 1단계: 화살표 기반 매칭
                 if target_dam_id and target_dam_id in id_to_text:
                     potential_dam = id_to_text[target_dam_id]
                     if query_norm not in normalize_name(potential_dam) and is_valid_mare(potential_dam):
@@ -190,18 +189,22 @@ def analyze_sire_perspective(root, target_sire_query, id_to_text, id_to_parent_t
                         if potential_bms and potential_bms != "Unknown" and query_norm not in normalize_name(potential_bms):
                             bms_name = potential_bms
 
-                # 2단계: 화살표로 찾지 못했거나 '미상'인 경우, 마인드맵 트리 계층 구조를 통한 폴백 추적
+                # 2단계: 화살표로 찾지 못했거나 미상인 경우, 마인드맵 트리 상위 부모 및 조상 노드를 직접 탐색
                 if dam_name == "미상" or bms_name == "미상":
-                    parent_text = id_to_parent_text.get(child_id, "")
-                    if parent_text and parent_text != "Unknown" and query_norm not in normalize_name(parent_text):
-                        if is_valid_mare(parent_text) or '암' in parent_text:
-                            if dam_name == "미상":
-                                dam_name = parent_text
-                        
-                    if dam_name != "미상" and bms_name == "미상":
-                        grand_parent = text_to_parent_text.get(dam_name.strip(), "")
-                        if grand_parent and grand_parent != "Unknown" and query_norm not in normalize_name(grand_parent):
-                            bms_name = grand_parent
+                    parent_node = child_id_to_parent_node.get(child_id)
+                    if parent_node is not None:
+                        p_text = parent_node.get('TEXT', '')
+                        if p_text and p_text != "Unknown" and query_norm not in normalize_name(p_text):
+                            if is_valid_mare(p_text) or '암' in p_text:
+                                if dam_name == "미상":
+                                    dam_name = p_text
+                            
+                            grand_parent_node = child_id_to_parent_node.get(parent_node.get('ID'))
+                            if grand_parent_node is not None:
+                                gp_text = grand_parent_node.get('TEXT', '')
+                                if gp_text and gp_text != "Unknown" and query_norm not in normalize_name(gp_text):
+                                    if bms_name == "미상":
+                                        bms_name = gp_text
 
                 results.append({
                     'progeny': child_text.strip(),
