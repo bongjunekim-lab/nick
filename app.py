@@ -18,16 +18,6 @@ def normalize_name(text):
     clean = clean.split('(')[0]
     return clean.strip().lower()
 
-def is_valid_mare(name, sire_query=""):
-    """모마 명칭의 유효성을 검증하고 자기 참조를 차단합니다."""
-    if not name or name in ["미상", "Unknown", "정보 없음"]:
-        return False
-    if '수)' in name and '암' not in name:
-        return False
-    if sire_query and normalize_name(sire_query) == normalize_name(name):
-        return False
-    return True
-
 # 1. 페이지 설정
 st.set_page_config(page_title="씨수말 & 외조부마(BMS) 통합 혈통 닉 분석기", layout="wide")
 
@@ -57,10 +47,6 @@ st.markdown("""
     }
     .highlight-g1-son {
         color: #0000FF !important;
-        font-weight: 900 !important;
-    }
-    .star-daughter {
-        color: #000000 !important;
         font-weight: 900 !important;
     }
     .legend-badge {
@@ -121,7 +107,7 @@ def load_mindmap_data():
         return None, None, None, None, f"파일 분석 오류: {str(e)}"
 
 # -------------------------------------------------------------------------
-# [관점 1] 씨수말 전수조사 분석 함수 (화살표 추적 로직 혈통 구조적 수정)
+# [관점 1] 씨수말 전수조사 분석 함수 (화살표 규칙 반영 정밀 보완)
 # -------------------------------------------------------------------------
 def analyze_sire_perspective(root, target_sire_query, id_to_text, id_to_parent_text):
     query_norm = normalize_name(target_sire_query)
@@ -152,36 +138,38 @@ def analyze_sire_perspective(root, target_sire_query, id_to_text, id_to_parent_t
                 dam_name = "미상"
                 bms_name = "미상"
 
-                # 1. 자마(child)에서 직접 나가는 화살표 또는 들어오는 화살표 추적
-                arrow_linked_id = None
+                # 자마 노드와 연결된 화살표 탐색
+                linked_dest_id = None
                 if child_id in forward_arrows:
-                    arrow_linked_id = forward_arrows[child_id][0]
+                    linked_dest_id = forward_arrows[child_id][0]
                 elif child_id in backward_arrows:
-                    arrow_linked_id = backward_arrows[child_id][0]
+                    linked_dest_id = backward_arrows[child_id][0]
 
-                if arrow_linked_id and arrow_linked_id in id_to_text:
-                    linked_text = id_to_text[arrow_linked_id]
-                    parent_of_linked = id_to_parent_text.get(arrow_linked_id, "미상")
-
-                    # [핵심 구분] 연결된 노드가 씨암말('암)')인 경우
-                    if '암)' in linked_text:
-                        dam_name = linked_text
-                        # 씨암말의 부모 노드가 외조부마
-                        if parent_of_linked and parent_of_linked != "Unknown" and query_norm not in normalize_name(parent_of_linked):
-                            bms_name = parent_of_linked
+                if linked_dest_id and linked_dest_id in id_to_text:
+                    dest_text = id_to_text[linked_dest_id]
+                    
+                    # 규칙 적용: 화살표가 가리키는 곳이 외조부마(씨수말)이거나 모마인 경우 분기 처리
+                    if '암)' in dest_text:
+                        # 목적지 자체가 모마인 경우
+                        dam_name = dest_text
+                        parent_bms = id_to_parent_text.get(linked_dest_id, "미상")
+                        if parent_bms and parent_bms != "Unknown":
+                            bms_name = parent_bms
                     else:
-                        # 연결된 노드가 외조부마(씨수말) 노드인 경우 (Sherriff'S Deputy -> Deputy Minister 형태)
-                        # 연결 노드 본인이 외조부마가 됨
-                        if query_norm not in normalize_name(linked_text):
-                            bms_name = linked_text
-                        
-                        # 화살표가 시작된 노드가 모마 노드인지 검증
-                        if arrow_linked_id in backward_arrows:
-                            origin_id = backward_arrows[arrow_linked_id][0]
-                            if origin_id in id_to_text and '암)' in id_to_text[origin_id]:
-                                dam_name = id_to_text[origin_id]
+                        # 목적지가 외조부마(씨수말)이고, 그 화살표의 출발점(또는 자마의 부모)이 모마인 경우
+                        bms_name = dest_text
+                        # 자마 노드의 부모 텍스트를 모마로 우선 확인
+                        parent_dam = id_to_parent_text.get(child_id, "")
+                        if parent_dam and '암)' in parent_dam:
+                            dam_name = parent_dam
+                        else:
+                            # 역방향 추적을 통해 모마 탐색
+                            for b_id in backward_arrows[linked_dest_id]:
+                                if b_id in id_to_text and '암)' in id_to_text[b_id]:
+                                    dam_name = id_to_text[b_id]
+                                    break
 
-                # 자기 참조 방어 및 데이터 정제
+                # 자기 참조 방어
                 if normalize_name(child_text) == normalize_name(dam_name):
                     dam_name = "미상"
 
@@ -252,7 +240,7 @@ if err:
     st.stop()
 
 st.sidebar.header("🔍 검색 설정")
-search_sire = st.sidebar.text_input("씨수말 이름을 입력하세요", value="storm cat")
+search_sire = st.sidebar.text_input("씨수말 이름을 입력하세요", value="Smart Strike")
 
 st.sidebar.markdown("---")
 st.sidebar.markdown("### 🔀 분석 관점 선택")
