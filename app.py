@@ -107,9 +107,9 @@ def load_mindmap_data():
         return None, None, None, None, f"파일 분석 오류: {str(e)}"
 
 # -------------------------------------------------------------------------
-# [관점 1] 씨수말 전수조사 분석 함수 (자기 참조 및 컬린 오류 원천 차단)
+# [관점 1] 씨수말 전수조사 분석 함수 (모마 및 외조부마 화살표 연쇄 추적 정밀 보완)
 # -------------------------------------------------------------------------
-def analyze_sire_perspective(root, target_sire_query, id_to_text, id_to_parent_text):
+def analyze_sire_perspective(root, target_sire_query, id_to_text, id_to_parent_text, id_to_node):
     query_norm = normalize_name(target_sire_query)
     results = []
 
@@ -137,45 +137,61 @@ def analyze_sire_perspective(root, target_sire_query, id_to_text, id_to_parent_t
 
                 dam_name = "미상"
                 bms_name = "미상"
+                target_dam_id = None
 
-                # 1. 부모 노드(직계 딸/씨암말) 텍스트 먼저 확인
-                parent_text = id_to_parent_text.get(child_id, "")
-                if parent_text and ('암)' in parent_text or '무전적' in parent_text):
-                    dam_name = parent_text
-
-                # 2. 화살표 링크 추적
-                linked_dest_id = None
+                # 1. 자마(child)에서 연결된 화살표(모마) 찾기
                 if child_id in forward_arrows:
-                    linked_dest_id = forward_arrows[child_id][0]
-                elif child_id in backward_arrows:
-                    linked_dest_id = backward_arrows[child_id][0]
+                    for d_id in forward_arrows[child_id]:
+                        if d_id in id_to_text:
+                            txt = id_to_text[d_id]
+                            if '암)' in txt or '무전적' in txt:
+                                target_dam_id = d_id
+                                break
+                if not target_dam_id and child_id in backward_arrows:
+                    for d_id in backward_arrows[child_id]:
+                        if d_id in id_to_text:
+                            txt = id_to_text[d_id]
+                            if '암)' in txt or '무전적' in txt:
+                                target_dam_id = d_id
+                                break
 
-                if linked_dest_id and linked_dest_id in id_to_text:
-                    dest_text = id_to_text[linked_dest_id]
-                    
-                    # 자기 참조(자마 이름이 목적지에 다시 잡히는 오류) 방어
-                    if normalize_name(child_text) != normalize_name(dest_text):
-                        if '암)' in dest_text:
-                            if dam_name == "미상":
-                                dam_name = dest_text
-                            parent_bms = id_to_parent_text.get(linked_dest_id, "미상")
-                            if parent_bms and parent_bms != "Unknown":
-                                bms_name = parent_bms
-                        else:
-                            # 목적지가 외조부마(씨수말)인 경우
-                            if query_norm not in normalize_name(dest_text):
-                                bms_name = dest_text
+                # 화살표로 못 찾았으면 노드의 부모 텍스트 확인
+                if not target_dam_id:
+                    parent_text = id_to_parent_text.get(child_id, "")
+                    if parent_text and ('암)' in parent_text or '무전적' in parent_text):
+                        dam_name = parent_text
+                
+                if target_dam_id and target_dam_id in id_to_text:
+                    potential_dam = id_to_text[target_dam_id]
+                    if normalize_name(child_text) != normalize_name(potential_dam):
+                        dam_name = potential_dam
 
-                # 3. 외조부마가 여전히 미상이고 모마 정보가 있다면, 모마 노드의 부모(상위 선대)를 외조부마로 추적
-                if bms_name == "미상" and dam_name != "미상":
-                    for c_node in root.iter('node'):
-                        if normalize_name(c_node.get('TEXT', '')) == normalize_name(dam_name):
-                            p_bms = id_to_parent_text.get(c_node.get('ID'), "미상")
+                        # 2. 외조부마(BMS) 찾기: 모마 노드(target_dam_id)에서 나가는 화살표 우선 추적 (컬린 등 복합 구조 대응)
+                        bms_found = False
+                        if target_dam_id in forward_arrows:
+                            for b_id in forward_arrows[target_dam_id]:
+                                if b_id in id_to_text:
+                                    b_text = id_to_text[b_id]
+                                    if query_norm not in normalize_name(b_text):
+                                        bms_name = b_text
+                                        bms_found = True
+                                        break
+                        if not bms_found and target_dam_id in backward_arrows:
+                            for b_id in backward_arrows[target_dam_id]:
+                                if b_id in id_to_text:
+                                    b_text = id_to_text[b_id]
+                                    if query_norm not in normalize_name(b_text):
+                                        bms_name = b_text
+                                        bms_found = True
+                                        break
+
+                        # 화살표가 없다면 기존 방식대로 XML 트리 부모 참고
+                        if not bms_found:
+                            p_bms = id_to_parent_text.get(target_dam_id, "미상")
                             if p_bms and p_bms != "Unknown":
                                 bms_name = p_bms
-                            break
 
-                # 최종 자기 참조 무결성 검증
+                # 자기 참조 방어
                 if normalize_name(child_text) == normalize_name(dam_name):
                     dam_name = "미상"
                 if normalize_name(child_text) == normalize_name(bms_name):
@@ -280,7 +296,7 @@ if "1." in view_mode:
     st.subheader(f"1️⃣ 씨수말 [{sire_clean_name}] 관점 전수조사")
     st.caption("※ 씨수말이 배출한 아들·딸을 전수 나열하고, 연결선(arrowlink)이 있는 경우 모마와 외조부마(BMS)를 추적합니다.")
     
-    sire_data = analyze_sire_perspective(root_node, search_sire, id_to_text, id_to_parent_text)
+    sire_data = analyze_sire_perspective(root_node, search_sire, id_to_text, id_to_parent_text, id_to_node)
     
     if not sire_data:
         st.warning("조건에 맞는 자마 데이터가 없습니다.")
