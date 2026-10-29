@@ -19,13 +19,14 @@ def normalize_name(text):
     return clean.strip().lower()
 
 def is_valid_mare(name, sire_query=""):
-    """모마 명칭에 유효한 암말 조건이 포함되어 있는지 검증하고 자기 참조를 방어합니다."""
-    if not name or name == "미상" or name == "Unknown":
+    """모마 명칭의 유효성을 검증하되, 실제 데이터는 최대한 보존합니다."""
+    if not name or name in ["미상", "Unknown", "정보 없음"]:
         return False
-    if '수)' in name and '암' not in name:
+    # 명백한 수말 오인식 또는 자기 참조인 경우에만 차단
+    if ('수)' in name and '암' not in name):
         return False
-    if sire_query and normalize_name(sire_query) in normalize_name(name):
-        return False  # 자기 참조(Self-reference) 데이터 오류 원천 차단
+    if sire_query and normalize_name(sire_query) == normalize_name(name):
+        return False
     return True
 
 # 1. 페이지 설정
@@ -121,7 +122,7 @@ def load_mindmap_data():
         return None, None, None, None, f"파일 분석 오류: {str(e)}"
 
 # -------------------------------------------------------------------------
-# [관점 1] 씨수말 전수조사 분석 함수 (구조적 역전 및 자기 참조 방어 보완)
+# [관점 1] 씨수말 전수조사 분석 함수
 # -------------------------------------------------------------------------
 def analyze_sire_perspective(root, target_sire_query, id_to_text, id_to_parent_text):
     query_norm = normalize_name(target_sire_query)
@@ -161,12 +162,15 @@ def analyze_sire_perspective(root, target_sire_query, id_to_text, id_to_parent_t
                 if target_dam_id and target_dam_id in id_to_text:
                     potential_dam = id_to_text[target_dam_id]
                     
-                    # 자기 참조 혹은 수말 오인식 방어
-                    if not is_valid_mare(potential_dam, target_sire_query) and query_norm not in normalize_name(potential_dam):
+                    if is_valid_mare(potential_dam, target_sire_query):
                         dam_name = potential_dam
                         potential_bms = id_to_parent_text.get(target_dam_id, "미상")
-                        if potential_bms and potential_bms != "Unknown" and query_norm not in normalize_name(potential_bms):
+                        if potential_bms and potential_bms != "Unknown":
                             bms_name = potential_bms
+                    else:
+                        # 데이터가 유효하지 않거나 자기 참조인 경우 명시적 미상 처리
+                        dam_name = "미상"
+                        bms_name = "미상"
 
                 results.append({
                     'progeny': child_text.strip(),
@@ -320,9 +324,6 @@ if "1." in view_mode:
                 items = bms_grouped_items[bms_name]
                 blue_progenies = []
                 for item in items:
-                    if not is_valid_mare(item['dam'], search_sire):
-                        continue
-                        
                     child_name = item['progeny']
                     g1_match = g1_pattern.search(child_name)
                     is_high_g1 = bool(g1_match and int(g1_match.group(1)) >= 7)
@@ -348,9 +349,6 @@ if "1." in view_mode:
                 items = bms_grouped_items[bms_name]
                 blue_progenies_single = []
                 for item in items:
-                    if not is_valid_mare(item['dam'], search_sire):
-                        continue
-                        
                     child_name = item['progeny']
                     g1_match = g1_pattern.search(child_name)
                     is_high_g1 = bool(g1_match and int(g1_match.group(1)) >= 7)
