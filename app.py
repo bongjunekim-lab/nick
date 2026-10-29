@@ -18,6 +18,15 @@ def normalize_name(text):
     clean = clean.split('(')[0]
     return clean.strip().lower()
 
+def is_valid_mare(name):
+    """
+    모마(직계 딸) 명칭이 유효한 암말인지 검증합니다.
+    - 이름 내에 '수)'가 포함되어 있으면 수 말이므로 모마가 될 수 없습니다.
+    """
+    if '수)' in name or '수술' in name: # 예외적인 수말 표기 방어
+        return False
+    return True
+
 # 1. 페이지 설정
 st.set_page_config(page_title="씨수말 & 외조부마(BMS) 통합 혈통 닉 분석기", layout="wide")
 
@@ -162,7 +171,7 @@ def analyze_sire_perspective(root, target_sire_query, id_to_text, id_to_parent_t
 
                 if target_dam_id and target_dam_id in id_to_text:
                     potential_dam = id_to_text[target_dam_id]
-                    if query_norm not in normalize_name(potential_dam):
+                    if query_norm not in normalize_name(potential_dam) and is_valid_mare(potential_dam):
                         dam_name = potential_dam
                         potential_bms = id_to_parent_text.get(target_dam_id, "미상")
                         if potential_bms and potential_bms != "Unknown" and query_norm not in normalize_name(potential_bms):
@@ -181,7 +190,7 @@ def analyze_sire_perspective(root, target_sire_query, id_to_text, id_to_parent_t
     return results
 
 # -------------------------------------------------------------------------
-# [관점 2] 외조부마(BMS) 관점 분석 함수 (직계 딸 기준 자마 매칭 정밀화)
+# [관점 2] 외조부마(BMS) 관점 분석 함수 (수말 모마 오류 완벽 차단 필터 적용)
 # -------------------------------------------------------------------------
 def analyze_bms_perspective(root, target_sire_query, id_to_text, id_to_parent_text):
     query_norm = normalize_name(target_sire_query)
@@ -192,7 +201,8 @@ def analyze_bms_perspective(root, target_sire_query, id_to_text, id_to_parent_te
         if query_norm in normalize_name(my_text):
             for child in node.findall('node'):
                 child_text = child.get('TEXT', '')
-                if '암)' in child_text:
+                # 직계 딸 조건 ('암)' 포함 및 유효한 암말 검증)
+                if '암)' in child_text and is_valid_mare(child_text):
                     progeny_list = []
                     seen_ids = set()
                     seen_combos = set()
@@ -205,8 +215,13 @@ def analyze_bms_perspective(root, target_sire_query, id_to_text, id_to_parent_te
                             c_text = id_to_text[dest_id]
                             f_text = id_to_parent_text.get(dest_id, "정보 없음")
                             
-                            # 모마와 자마의 이름이 동일한 경우 제외
+                            # 1. 모마와 자마의 이름이 동일한 경우 제외
                             if normalize_name(c_text) == daughter_norm:
+                                seen_ids.add(dest_id)
+                                continue
+
+                            # 2. 자마 항목에 수말 씨수말 이름이 잘못 들어가거나 오류가 난 경우 제외 (안전장치)
+                            if '수)' in c_text and not ('암' in c_text):
                                 seen_ids.add(dest_id)
                                 continue
 
@@ -404,7 +419,7 @@ if "1." in view_mode:
             st.markdown(f"<div class='progeny-item'>🐴 [{idx}] <b>{child_display}</b> {dam_str} {bms_style}</div>", unsafe_allow_html=True)
 
 # =========================================================================
-# [탭 2] 외조부마(BMS) 관점 분석 실행 결과 출력 (요약 목록 주체 명확화 반영)
+# [탭 2] 외조부마(BMS) 관점 분석 실행 결과 출력
 # =========================================================================
 else:
     st.subheader(f"2️⃣ 외조부마(BMS) [{sire_clean_name}] 관점 분석")
@@ -446,7 +461,7 @@ else:
         </div>
         """, unsafe_allow_html=True)
 
-        # 1. 2두 이상 중복 교배 부마(Nick) 범례 및 파란색 자마 목록 (직계 딸이 자마를 배출한 구조로 정확히 표기)
+        # 1. 2두 이상 중복 교배 부마(Nick) 범례 및 파란색 자마 목록
         if nick_sires:
             st.markdown("🎨 **중복 교배 부마(Nick) 하이라이트 범례 및 파란색(특수) 자마 목록:**")
             for ns in nick_sires:
@@ -477,7 +492,7 @@ else:
                 else:
                     st.markdown(f"&nbsp;&nbsp;&nbsp;&nbsp;↳ <span style='color: #888; font-style: italic;'>조건을 만족하는 파란색 자마 없음</span>", unsafe_allow_html=True)
 
-        # 2. 단독 출현 씨수말 목록 (직계 딸이 자마를 배출한 구조로 정확히 표기)
+        # 2. 단독 출현 씨수말 목록
         if single_sires:
             st.markdown("---")
             st.markdown("### 📌 단독 출현 씨수말 목록")
