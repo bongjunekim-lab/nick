@@ -135,7 +135,7 @@ def load_mindmap_data():
         return None, None, None, None, f"파일 분석 오류: {str(e)}"
 
 # -------------------------------------------------------------------------
-# [관점 1] 씨수말 전수조사 분석 함수 (화살표 + 트리 계층 구조 추적 보완)
+# [관점 1] 씨수말 전수조사 분석 함수 (상위 계보 정밀 추적 로직 적용)
 # -------------------------------------------------------------------------
 def analyze_sire_perspective(root, target_sire_query, id_to_text, id_to_parent_text):
     query_norm = normalize_name(target_sire_query)
@@ -154,13 +154,12 @@ def analyze_sire_perspective(root, target_sire_query, id_to_text, id_to_parent_t
                 forward_arrows[src_id].append(dest_id)
                 backward_arrows[dest_id].append(src_id)
 
-    # 전체 노드 구조에서 자식 ID -> 부모 노드 객체를 매핑하여 트리 계층을 완벽히 역추적
-    child_id_to_parent_node = {}
+    parent_map = {}
     for parent in root.iter('node'):
         for child in parent.findall('node'):
             c_id = child.get('ID')
             if c_id:
-                child_id_to_parent_node[c_id] = parent
+                parent_map[c_id] = parent
 
     def traverse(node):
         my_text = node.get('TEXT', '')
@@ -180,31 +179,39 @@ def analyze_sire_perspective(root, target_sire_query, id_to_text, id_to_parent_t
                 elif child_id in backward_arrows:
                     target_dam_id = backward_arrows[child_id][0]
 
-                # 1단계: 화살표 기반 매칭
+                # 1단계: 화살표 링크를 통한 모마 및 외조부마 탐색
                 if target_dam_id and target_dam_id in id_to_text:
                     potential_dam = id_to_text[target_dam_id]
                     if query_norm not in normalize_name(potential_dam) and is_valid_mare(potential_dam):
                         dam_name = potential_dam
-                        potential_bms = id_to_parent_text.get(target_dam_id, "미상")
-                        if potential_bms and potential_bms != "Unknown" and query_norm not in normalize_name(potential_bms):
-                            bms_name = potential_bms
+                        curr_p = parent_map.get(target_dam_id)
+                        while curr_p is not None:
+                            gp_text = curr_p.get('TEXT', '')
+                            if gp_text and gp_text != "Unknown" and query_norm not in normalize_name(gp_text):
+                                if '암)' not in gp_text and '암' not in gp_text[:3]:
+                                    bms_name = gp_text
+                                    break
+                            curr_p = parent_map.get(curr_p.get('ID'))
 
-                # 2단계: 화살표로 찾지 못했거나 미상인 경우, 마인드맵 트리 상위 부모 및 조상 노드를 직접 탐색
+                # 2단계: 화살표로 찾지 못했거나 미상인 경우, 트리 계층 구조를 거슬러 올라가며 탐색
                 if dam_name == "미상" or bms_name == "미상":
-                    parent_node = child_id_to_parent_node.get(child_id)
-                    if parent_node is not None:
-                        p_text = parent_node.get('TEXT', '')
+                    curr = parent_map.get(child_id)
+                    while curr is not None:
+                        p_text = curr.get('TEXT', '')
                         if p_text and p_text != "Unknown" and query_norm not in normalize_name(p_text):
                             if is_valid_mare(p_text) or '암' in p_text:
                                 if dam_name == "미상":
                                     dam_name = p_text
-                            
-                            grand_parent_node = child_id_to_parent_node.get(parent_node.get('ID'))
-                            if grand_parent_node is not None:
-                                gp_text = grand_parent_node.get('TEXT', '')
-                                if gp_text and gp_text != "Unknown" and query_norm not in normalize_name(gp_text):
-                                    if bms_name == "미상":
-                                        bms_name = gp_text
+                                gp_node = parent_map.get(curr.get('ID'))
+                                while gp_node is not None:
+                                    gp_text = gp_node.get('TEXT', '')
+                                    if gp_text and gp_text != "Unknown" and query_norm not in normalize_name(gp_text):
+                                        if '암)' not in gp_text and '암' not in gp_text[:3]:
+                                            bms_name = gp_text
+                                            break
+                                    gp_node = parent_map.get(gp_node.get('ID'))
+                                break
+                        curr = parent_map.get(curr.get('ID'))
 
                 results.append({
                     'progeny': child_text.strip(),
@@ -577,3 +584,4 @@ else:
                     father_display = f"<b>{father_name}</b>"
                     
                 st.markdown(f"<div class='progeny-item'>🔗 [연결 자마] {child_display} (부마: {father_display})</div>", unsafe_allow_html=True)
+
