@@ -330,4 +330,139 @@ if "1." in view_mode:
                     g1_match = g1_pattern.search(child_name)
                     is_high_g1 = bool(g1_match and int(g1_match.group(1)) >= 7)
                     is_daughter = '암)' in child_name
-                    is_elite_daughter = ('@' in child_name or '#' in child_name or '＠' in child_name or '＃
+                    is_elite_daughter = ('@' in child_name or '#' in child_name or '＠' in child_name or '＃' in child_name or '*' in child_name) and is_daughter
+                    is_high_g1_son = is_high_g1 and not is_daughter
+                    
+                    if is_elite_daughter or is_high_g1_son:
+                        blue_progenies_single.append(item)
+                
+                if blue_progenies_single:
+                    st.markdown(f"**🔹 {bms_name} (1두)**")
+                    for item in blue_progenies_single:
+                        dam_display = clean_name_symbols(item['dam']) if item['dam'] and item['dam'] != "미상" else "미상"
+                        child_name = item['progeny']
+                        st.markdown(f"&nbsp;&nbsp;&nbsp;&nbsp;- <span class='highlight-elite-daughter'>{child_name}</span> --- 🔗 (모마: {dam_display})", unsafe_allow_html=True)
+
+        # 3. 기존 전체 자마 리스트 및 외조부마 매칭 (하단 배치)
+        st.markdown("---")
+        st.markdown("### 📋 전체 자마 리스트 및 외조부마 매칭")
+        for idx, item in enumerate(filtered_data, 1):
+            bms_display = clean_name_symbols(item['bms']) if item['bms'] and item['bms'] != "미상" else "미상"
+            dam_display = clean_name_symbols(item['dam']) if item['dam'] and item['dam'] != "미상" else "미상"
+            
+            child_name = item['progeny']
+            g1_match = g1_pattern.search(child_name)
+            is_high_g1 = bool(g1_match and int(g1_match.group(1)) >= 7)
+            is_daughter = '암)' in child_name
+            is_elite_daughter = ('@' in child_name or '#' in child_name or '＠' in child_name or '＃' in child_name or '*' in child_name) and is_daughter
+            is_high_g1_son = is_high_g1 and not is_daughter
+
+            if highlight_special_progeny:
+                if is_high_g1_son:
+                    child_display = f"<span class='highlight-g1-son'>{child_name}</span>"
+                elif is_elite_daughter:
+                    child_display = f"<span class='highlight-elite-daughter'>{child_name}</span>"
+                else:
+                    child_display = child_name
+            else:
+                if is_high_g1_son or is_elite_daughter:
+                    child_display = f"<span class='premium-progeny'>{child_name}</span>"
+                elif '*' in child_name and is_daughter:
+                    child_display = f"<span class='star-daughter'>{child_name}</span>"
+                else:
+                    child_display = child_name
+
+            dam_str = f"--- 🔗 (모마: {dam_display})"
+            
+            if item['bms'] in nick_style_map:
+                b_c, bg_c = nick_style_map[item['bms']]
+                bms_style = f"| <span style='color:{b_c}; background-color:{bg_c}; font-weight:bold; padding:2px 6px; border-radius:4px; border:1px solid {b_c}80;'>[외조부마: {bms_display}]</span>"
+            else:
+                bms_style = f"| [외조부마: {bms_display}]"
+                
+            st.markdown(f"<div class='progeny-item'>🐴 [{idx}] <b>{child_display}</b> {dam_str} {bms_style}</div>", unsafe_allow_html=True)
+
+# =========================================================================
+# [탭 2] 외조부마(BMS) 관점 분석 실행 결과 출력
+# =========================================================================
+else:
+    st.subheader(f"2️⃣ 외조부마(BMS) [{sire_clean_name}] 관점 분석")
+    st.caption("※ 해당 씨수말의 직계 딸('암)' 표기)들이 배출한 자마 및 교배 부마(Father)의 닉(Nick) 조합을 분석합니다.")
+    
+    bms_data = analyze_bms_perspective(root_node, search_sire, id_to_text, id_to_parent_text)
+    
+    if not bms_data:
+        st.warning(f"'{search_sire}'의 조건('암)' 표기 + 연결된 자마 보유)을 만족하는 직계 딸 데이터가 없습니다.")
+    else:
+        father_counts = defaultdict(int)
+
+        for item in bms_data:
+            for p in item['progeny']:
+                father_counts[p['father']] += 1
+
+        nick_sires = [father for father, count in father_counts.items() if count >= 2 and father != "정보 없음"]
+
+        bg_palette = ["#FFEBEE", "#E0F2F1", "#F3E5F5", "#E8F5E9", "#FBE9E7", "#FFFDE7", "#E1F5FE"]
+        border_palette = ["#D32F2F", "#00796B", "#7B1FA2", "#388E3C", "#E64A19", "#FBC02D", "#0288D1"]
+
+        nick_style_map = {}
+        for idx, ns in enumerate(nick_sires):
+            nick_style_map[ns] = (border_palette[idx % len(border_palette)], bg_palette[idx % len(bg_palette)])
+
+        st.markdown(f"""
+        <div class='info-box'>
+            <b>조건 충족 직계 딸(종빈마):</b> 총 {len(bms_data)}두 | 
+            <b>중복 교배(Nick) 부마 수:</b> <span style='color:#D32F2F; font-weight:bold;'>{len(nick_sires)}두</span>
+        </div>
+        """, unsafe_allow_html=True)
+
+        if nick_sires:
+            st.markdown("🎨 **중복 교배 부마(Nick) 하이라이트 범례:**")
+            legend_html = "<div style='display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 20px;'>"
+            for ns in nick_sires:
+                b_c, bg_c = nick_style_map[ns]
+                cnt = father_counts[ns]
+                legend_html += f"<span style='background-color:{bg_c}; color:{b_c}; border:1px solid {b_c}; font-weight:bold; padding:4px 10px; border-radius:6px; font-size:0.9em;'>{ns} ({cnt}두)</span>"
+            legend_html += "</div>"
+            st.markdown(legend_html, unsafe_allow_html=True)
+
+        st.markdown("---")
+
+        for idx, item in enumerate(bms_data, 1):
+            daughter_name = item['daughter']
+            progeny_list = item['progeny']
+            
+            st.markdown(f"<div class='elite-mare'>💎 [{idx}] {daughter_name} (연결 자마: {len(progeny_list)}두)</div>", unsafe_allow_html=True)
+            
+            for p in progeny_list:
+                child_name = p['child']
+                father_name = p['father']
+                
+                g1_match = g1_pattern.search(child_name)
+                is_high_g1 = bool(g1_match and int(g1_match.group(1)) >= 7)
+                is_daughter = '암)' in child_name
+                is_elite_daughter = ('@' in child_name or '#' in child_name or '＠' in child_name or '＃' in child_name or '*' in child_name) and is_daughter
+                is_high_g1_son = is_high_g1 and not is_daughter
+                
+                if highlight_special_progeny:
+                    if is_high_g1_son:
+                        child_display = f"<span class='highlight-g1-son'>{child_name}</span>"
+                    elif is_elite_daughter:
+                        child_display = f"<span class='highlight-elite-daughter'>{child_name}</span>"
+                    else:
+                        child_display = child_name
+                else:
+                    if is_high_g1_son or is_elite_daughter:
+                        child_display = f"<span class='premium-progeny'>{child_name}</span>"
+                    elif '*' in child_name and is_daughter:
+                        child_display = f"<span class='star-daughter'>{child_name}</span>"
+                    else:
+                        child_display = child_name
+
+                if father_name in nick_style_map:
+                    b_c, bg_c = nick_style_map[father_name]
+                    father_display = f"<span style='color:{b_c}; background-color:{bg_c}; font-weight:bold; padding:2px 8px; border-radius:4px; border:1px solid {b_c}80;'>{father_name}</span>"
+                else:
+                    father_display = f"<b>{father_name}</b>"
+                    
+                st.markdown(f"<div class='progeny-item'>🔗 [연결 자마] {child_display} (부마: {father_display})</div>", unsafe_allow_html=True)
