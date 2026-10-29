@@ -181,7 +181,7 @@ def analyze_sire_perspective(root, target_sire_query, id_to_text, id_to_parent_t
     return results
 
 # -------------------------------------------------------------------------
-# [관점 2] 외조부마(BMS) 관점 분석 함수 (기존 탐색 방식 복원 + 모마 동명 자마 필터링 적용)
+# [관점 2] 외조부마(BMS) 관점 분석 함수 (동명 자마 필터링 적용)
 # -------------------------------------------------------------------------
 def analyze_bms_perspective(root, target_sire_query, id_to_text, id_to_parent_text):
     query_norm = normalize_name(target_sire_query)
@@ -238,7 +238,7 @@ if err:
 
 # 사이드바 설정 영역
 st.sidebar.header("🔍 검색 설정")
-search_sire = st.sidebar.text_input("씨수말 이름을 입력하세요", value="seattle slew")
+search_sire = st.sidebar.text_input("씨수말 이름을 입력하세요", value="storm cat")
 
 st.sidebar.markdown("---")
 st.sidebar.markdown("### 🔀 분석 관점 선택")
@@ -404,7 +404,7 @@ if "1." in view_mode:
             st.markdown(f"<div class='progeny-item'>🐴 [{idx}] <b>{child_display}</b> {dam_str} {bms_style}</div>", unsafe_allow_html=True)
 
 # =========================================================================
-# [탭 2] 외조부마(BMS) 관점 분석 실행 결과 출력
+# [탭 2] 외조부마(BMS) 관점 분석 실행 결과 출력 (가독성 개선 적용)
 # =========================================================================
 else:
     st.subheader(f"2️⃣ 외조부마(BMS) [{sire_clean_name}] 관점 분석")
@@ -446,7 +446,7 @@ else:
         </div>
         """, unsafe_allow_html=True)
 
-        # 1. 2두 이상 중복 교배 부마(Nick) 범례 및 파란색 자마 목록
+        # 1. 2두 이상 중복 교배 부마(Nick) 범례 및 파란색 자마 목록 (가독성 개선)
         if nick_sires:
             st.markdown("🎨 **중복 교배 부마(Nick) 하이라이트 범례 및 파란색(특수) 자마 목록:**")
             for ns in nick_sires:
@@ -473,11 +473,11 @@ else:
                     for p in blue_progenies:
                         daughter_name = p['daughter']
                         child_name = p['child']
-                        st.markdown(f"&nbsp;&nbsp;&nbsp;&nbsp;↳ 직계딸: {daughter_name} | 연결 자마: <span class='highlight-elite-daughter'>{child_name}</span>", unsafe_allow_html=True)
+                        st.markdown(f"&nbsp;&nbsp;&nbsp;&nbsp;↳ <span class='highlight-elite-daughter'>{child_name}</span> --- 🔗 (직계딸: {daughter_name})", unsafe_allow_html=True)
                 else:
                     st.markdown(f"&nbsp;&nbsp;&nbsp;&nbsp;↳ <span style='color: #888; font-style: italic;'>조건을 만족하는 파란색 자마 없음</span>", unsafe_allow_html=True)
 
-        # 2. 단독 출현 씨수말 목록
+        # 2. 단독 출현 씨수말 목록 (가독성 개선)
         if single_sires:
             st.markdown("---")
             st.markdown("### 📌 단독 출현 씨수말 목록")
@@ -500,7 +500,7 @@ else:
                     for p in blue_progenies_single:
                         daughter_name = p['daughter']
                         child_name = p['child']
-                        st.markdown(f"&nbsp;&nbsp;&nbsp;&nbsp;↳ 직계딸: {daughter_name} | 연결 자마: <span class='highlight-elite-daughter'>{child_name}</span>", unsafe_allow_html=True)
+                        st.markdown(f"&nbsp;&nbsp;&nbsp;&nbsp;↳ <span class='highlight-elite-daughter'>{child_name}</span> --- 🔗 (직계딸: {daughter_name})", unsafe_allow_html=True)
 
         st.markdown("---")
 
