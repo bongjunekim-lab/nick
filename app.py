@@ -33,7 +33,7 @@ def is_valid_mare(name):
 # 1. 페이지 설정
 st.set_page_config(page_title="씨수말 & 외조부마(BMS) 통합 혈통 닉 분석기", layout="wide")
 
-# CSS 스타일 정의 (파란색을 더 환하고 선명한 로얄 블루 `#2E86C1`로 수정)
+# CSS 스타일 정의 (표시해주신 사각형과 같은 환하고 선명한 파란색 `#007FFF` 적용)
 st.markdown("""
     <style>
     .elite-mare {
@@ -51,10 +51,10 @@ st.markdown("""
         color: #2C3E50;
         font-size: 1.05em;
     }
-    /* 조건 만족: 굵고 환한 선명한 파란색 */
+    /* 조건 만족: 굵고 환한 파란색 (이미지 사각형 색상 반영) */
     .highlight-special-blue {
         font-weight: 900 !important;
-        color: #2E86C1 !important;
+        color: #007FFF !important;
     }
     /* 특수기호 *: 굵은 검은색 */
     .highlight-special-star {
