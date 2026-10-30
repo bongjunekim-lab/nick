@@ -20,24 +20,20 @@ def normalize_name(text):
 
 def is_valid_mare(name):
     """
-    [안전하고 유연한 암말 검증 원칙]
-    - 마명 내에 '암' 글자가 포함되어 있으면 암말(직계딸)로 인정합니다.
-    - 단, 명백한 수말(수) 표기가 단독으로 강조된 경우는 제외합니다.
+    [엄격한 성별 판별 원칙]
+    - 마명 내에 '암' 또는 '암)' 글자가 명시적으로 포함된 경우에만 암말(직계딸)로 인정합니다.
+    - 그 외의 경우는 기본적으로 모두 수말로 간주합니다.
     """
     if not name:
         return False
-    if '수)' in name and '암' not in name:
-        return False
     if '암' in name or '암)' in name:
         return True
-    if 'speightstown' in name.lower() or 'sire' in name.lower():
-        return False
-    return True
+    return False
 
 # 1. 페이지 설정
 st.set_page_config(page_title="씨수말 & 외조부마(BMS) 통합 혈통 닉 분석기", layout="wide")
 
-# CSS 스타일 정의
+# CSS 스타일 정의 (파란색을 더 환하고 선명한 로얄 블루 `#2E86C1`로 수정)
 st.markdown("""
     <style>
     .elite-mare {
@@ -55,10 +51,10 @@ st.markdown("""
         color: #2C3E50;
         font-size: 1.05em;
     }
-    /* 조건 만족: 굵은 진한 파란색 */
+    /* 조건 만족: 굵고 환한 선명한 파란색 */
     .highlight-special-blue {
         font-weight: 900 !important;
-        color: #1B4F72 !important;
+        color: #2E86C1 !important;
     }
     /* 특수기호 *: 굵은 검은색 */
     .highlight-special-star {
@@ -167,11 +163,9 @@ def load_mindmap_data():
     except Exception as e:
         return None, None, None, None, f"파일 분석 오류: {str(e)}"
 
-# ✅ G1 뒤에 콤마(,), 점(.), 하이픈(-), 콜론(:), 공백 등 어떤 기호가 섞여 있든 숫자를 정확히 추출하는 정규식
 g1_pattern = re.compile(r'G1[^\d]*(\d+)')
 
 def check_special_condition(text):
-    """암말 @, # 기호 보유 또는 수말 G1 우승 자마 두수 7두 이상 여부 체크"""
     g1_matches = g1_pattern.findall(text)
     g1_wins = max([int(x) for x in g1_matches]) if g1_matches else 0
     is_daughter = is_valid_mare(text)
@@ -184,7 +178,6 @@ def check_special_condition(text):
 def calculate_evaluation_score(text, is_elite_daughter=False, is_high_g1=False):
     score = 30.0
     
-    # 텍스트 내 모든 G1 매칭 값을 찾아 가장 큰 값(진짜 G1 우승/배출 수 지표)을 채택
     g1_matches = g1_pattern.findall(text)
     g1_wins = max([int(x) for x in g1_matches]) if g1_matches else 0
     
@@ -299,7 +292,6 @@ def analyze_bms_perspective(root, target_sire_query, id_to_text, id_to_parent_te
     traverse(root)
     return results
 
-# UI 화면 타이틀
 st.title("🐎 씨수말 & 외조부마(BMS) 통합 혈통 닉 분석기")
 
 root_node, id_to_text, id_to_parent_text, id_to_node, err = load_mindmap_data()
@@ -307,7 +299,6 @@ if err:
     st.error(err)
     st.stop()
 
-# 사이드바 설정 영역
 st.sidebar.header("🔍 검색 설정")
 search_sire = st.sidebar.text_input("씨수말 이름을 입력하세요", value="Storm Cat")
 
@@ -330,7 +321,6 @@ if not search_sire.strip():
 
 sire_clean_name = clean_name_symbols(search_sire)
 
-# 사전 점수 집계 (상단 스코어보드 공용)
 sire_data_for_calc = analyze_sire_perspective(root_node, search_sire, id_to_text, id_to_parent_text)
 total_sire_score = sum(calculate_evaluation_score(item['progeny'])[0] for item in sire_data_for_calc)
 
@@ -348,7 +338,6 @@ for item in bms_data_for_calc:
 
 total_comprehensive_score = total_sire_score + total_bms_score
 
-# 🚀 [상단 배치] 최종 종합 브리딩 스코어보드 카드
 st.markdown(f"""
 <div class='summary-card-top'>
     <h3 style='margin: 0; color: #2E4053;'>🏆 [{sire_clean_name}] 최종 종합 브리딩 스코어보드</h3>
@@ -359,9 +348,6 @@ st.markdown(f"""
 </div>
 """, unsafe_allow_html=True)
 
-# =========================================================================
-# [탭 1] 씨수말(Sire) 관점 전수조사 실행 결과 출력
-# =========================================================================
 if "1." in view_mode:
     st.subheader(f"1️⃣ 씨수말 [{sire_clean_name}] 관점 전수조사 (Layer A: 직계 자마 & 외조부마 매칭)")
     st.caption("※ 씨수말이 직접 배출한 직계 자마와 결합된 외조부마(BMS) 간의 닉 효율 및 Sire-Maker 결합 패턴을 분석합니다.")
@@ -481,9 +467,6 @@ if "1." in view_mode:
             st.markdown(f"<div class='progeny-item'>🐴 [{idx}] {badge_h} <b>{child_display}</b> {dam_str} {bms_style} (가중 점수: <b>{score:.1f}점</b>)</div>", unsafe_allow_html=True)
             st.markdown(f"<div style='margin-left: 25px;'><div class='gauge-container'><div class='gauge-bar' style='width: {min(score/5, 100)}%;'></div></div></div>", unsafe_allow_html=True)
 
-# =========================================================================
-# [탭 2] 외조부마(BMS) 관점 분석 실행 결과 출력
-# =========================================================================
 else:
     st.subheader(f"2️⃣ 외조부마(BMS) [{sire_clean_name}] 관점 분석 (Layer B: 모계 확장 축)")
     st.caption(f"※ 해당 씨수말의 직계 딸('암)' 표기)들이 배출한 자마 및 교배 부마(Father)의 닉(Nick) 조합을 분석합니다.")
