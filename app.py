@@ -35,9 +35,9 @@ def is_valid_mare(name):
     return True
 
 # 1. 페이지 설정
-st.set_page_config(page_title="씨수말 & 외조부마(BMS) 통합 혈통 닉 분석기 (Tier & Metric Enhanced)", layout="wide")
+st.set_page_config(page_title="씨수말 & 외조부마(BMS) 통합 혈통 닉 분석기 (Mare Score Enhanced)", layout="wide")
 
-# CSS 스타일 정의 (배지, 카드, 게이지바 추가)
+# CSS 스타일 정의
 st.markdown("""
     <style>
     .elite-mare {
@@ -101,33 +101,31 @@ st.markdown("""
         margin-bottom: 15px;
         border-radius: 4px;
     }
-    /* 등급 배지 스타일 */
     .tier-badge-s-plus {
         background: linear-gradient(135deg, #FFD700, #FFA500);
         color: #000;
-        padding: 4px 10px;
-        border-radius: 12px;
+        padding: 2px 8px;
+        border-radius: 10px;
         font-weight: bold;
-        font-size: 0.9em;
+        font-size: 0.85em;
         border: 1px solid #FF8C00;
     }
     .tier-badge-s {
         background: linear-gradient(135deg, #0055CC, #00C6FF);
         color: #fff;
-        padding: 4px 10px;
-        border-radius: 12px;
+        padding: 2px 8px;
+        border-radius: 10px;
         font-weight: bold;
-        font-size: 0.9em;
+        font-size: 0.85em;
     }
     .tier-badge-a {
         background: linear-gradient(135deg, #6c757d, #adb5bd);
         color: #fff;
-        padding: 4px 10px;
-        border-radius: 12px;
+        padding: 2px 8px;
+        border-radius: 10px;
         font-weight: bold;
-        font-size: 0.9em;
+        font-size: 0.85em;
     }
-    /* 임팩트 게이지 바 스타일 */
     .gauge-container {
         background-color: #e9ecef;
         border-radius: 4px;
@@ -175,14 +173,10 @@ def load_mindmap_data():
     except Exception as e:
         return None, None, None, None, f"파일 분석 오류: {str(e)}"
 
-# -------------------------------------------------------------------------
-# [점수 및 등급 산출 유틸리티 함수]
-# -------------------------------------------------------------------------
 def calculate_evaluation_score(text, is_elite_daughter=False, is_high_g1=False):
-    """항목별 텍스트 내용을 분석하여 가중치 점수, 등급, 게이지 비율을 계산합니다."""
+    """항목별 텍스트 내용을 분석하여 가중치 점수, 등급, 배지 HTML을 계산합니다."""
     score = 50.0  # 기본 점수
     
-    # G1 승수 추출 (예: G1-10, G1-12 등)
     g1_match = re.search(r'G1-(\d+)', text)
     g1_wins = int(g1_match.group(1)) if g1_match else 0
     
@@ -196,18 +190,14 @@ def calculate_evaluation_score(text, is_elite_daughter=False, is_high_g1=False):
         
     score = min(score, 100.0)
     
-    # 등급 부여
     if score >= 85.0:
-        tier = "👑 S+ Tier (Legendary)"
         badge_html = "<span class='tier-badge-s-plus'>👑 S+ Tier</span>"
     elif score >= 70.0:
-        tier = "🔥 S Tier (Elite Nick)"
         badge_html = "<span class='tier-badge-s'>🔥 S Tier</span>"
     else:
-        tier = "✨ A Tier (Dormant/Standard)"
         badge_html = "<span class='tier-badge-a'>✨ A Tier</span>"
         
-    return score, tier, badge_html
+    return score, badge_html
 
 # -------------------------------------------------------------------------
 # [관점 1] 씨수말 전수조사 분석 함수
@@ -375,7 +365,6 @@ if "1." in view_mode:
         nick_bms = [bms for bms, cnt in bms_counts.items() if cnt >= 2]
         single_bms = [bms for bms, cnt in bms_counts.items() if cnt == 1 and bms != "미상"]
         
-        # 🚀 [추가] 핵심 지표 요약 카드 (KPI Stat Metric Cards) 상단 배치
         total_progeny_count = len(sire_data)
         elite_count = sum(1 for item in sire_data if ('@' in item['progeny'] or '#' in item['progeny'] or '*' in item['progeny'] or bool(g1_pattern.search(item['progeny']))))
         
@@ -445,10 +434,9 @@ if "1." in view_mode:
                         dam_display = clean_name_symbols(item['dam']) if item['dam'] and item['dam'] != "미상" else "미상"
                         child_name = item['progeny']
                         
-                        # 🚀 [추가] 점수 및 등급 계산 시각화 연동
-                        score, tier_text, badge_h = calculate_evaluation_score(child_name, is_elite_daughter=True)
+                        score, badge_h = calculate_evaluation_score(child_name, is_elite_daughter=True)
                         
-                        st.markdown(f"&nbsp;&nbsp;&nbsp;&nbsp;↳ {badge_h} <span class='highlight-elite-daughter'>{child_name}</span> --- 🔗 (모마: {dam_display}) [영향력 점수: <b>{score:.1f}점</b>]", unsafe_allow_html=True)
+                        st.markdown(f"&nbsp;&nbsp;&nbsp;&nbsp;↳ {badge_h} <span class='highlight-elite-daughter'>{child_name}</span> --- 🔗 (모마: {dam_display}) [점수: <b>{score:.1f}점</b>]", unsafe_allow_html=True)
                         st.markdown(f"&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<div class='gauge-container'><div class='gauge-bar' style='width: {score}%;'></div></div>", unsafe_allow_html=True)
                 else:
                     st.markdown(f"&nbsp;&nbsp;&nbsp;&nbsp;↳ <span style='color: #888; font-style: italic;'>조건을 만족하는 파란색 자마 없음</span>", unsafe_allow_html=True)
@@ -476,9 +464,9 @@ if "1." in view_mode:
                         dam_display = clean_name_symbols(item['dam']) if item['dam'] and item['dam'] != "미상" else "미상"
                         child_name = item['progeny']
                         
-                        score, tier_text, badge_h = calculate_evaluation_score(child_name, is_elite_daughter=True)
+                        score, badge_h = calculate_evaluation_score(child_name, is_elite_daughter=True)
                         
-                        st.markdown(f"&nbsp;&nbsp;&nbsp;&nbsp;↳ {badge_h} <span class='highlight-elite-daughter'>{child_name}</span> --- 🔗 (모마: {dam_display}) [영향력 점수: <b>{score:.1f}점</b>]", unsafe_allow_html=True)
+                        st.markdown(f"&nbsp;&nbsp;&nbsp;&nbsp;↳ {badge_h} <span class='highlight-elite-daughter'>{child_name}</span> --- 🔗 (모마: {dam_display}) [점수: <b>{score:.1f}점</b>]", unsafe_allow_html=True)
                         st.markdown(f"&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<div class='gauge-container'><div class='gauge-bar' style='width: {score}%;'></div></div>", unsafe_allow_html=True)
 
         st.markdown("---")
@@ -517,8 +505,7 @@ if "1." in view_mode:
             else:
                 bms_style = f"| [외조부마: {bms_display}]"
                 
-            # 전체 리스트 항목별 임팩트 점수 및 게이지바 동시 렌더링
-            score, tier_text, badge_h = calculate_evaluation_score(child_name, is_elite_daughter=is_elite_daughter, is_high_g1=is_high_g1)
+            score, badge_h = calculate_evaluation_score(child_name, is_elite_daughter=is_elite_daughter, is_high_g1=is_high_g1)
             
             st.markdown(f"<div class='progeny-item'>🐴 [{idx}] {badge_h} <b>{child_display}</b> {dam_str} {bms_style} (점수: <b>{score:.1f}</b>)</div>", unsafe_allow_html=True)
             st.markdown(f"<div style='margin-left: 25px;'><div class='gauge-container' style='width: 60%;'><div class='gauge-bar' style='width: {score}%;'></div></div></div>", unsafe_allow_html=True)
@@ -593,9 +580,9 @@ else:
                         daughter_name = p['daughter']
                         child_name = p['child']
                         
-                        score, tier_text, badge_h = calculate_evaluation_score(child_name, is_elite_daughter=True)
+                        score, badge_h = calculate_evaluation_score(child_name, is_elite_daughter=True)
                         
-                        st.markdown(f"&nbsp;&nbsp;&nbsp;&nbsp;↳ {badge_h} {sire_clean_name} 직계딸: {daughter_name} --- <span class='highlight-elite-daughter'>{child_name}</span> (점수: <b>{score:.1f}</b>)", unsafe_allow_html=True)
+                        st.markdown(f"&nbsp;&nbsp;&nbsp;&nbsp;↳ {badge_h} {sire_clean_name} 직계딸: {daughter_name} --- <span class='highlight-elite-daughter'>{child_name}</span> (점수: <b>{score:.1f}점</b>)", unsafe_allow_html=True)
                         st.markdown(f"&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<div class='gauge-container'><div class='gauge-bar' style='width: {score}%;'></div></div>", unsafe_allow_html=True)
                 else:
                     st.markdown(f"&nbsp;&nbsp;&nbsp;&nbsp;↳ <span style='color: #888; font-style: italic;'>조건을 만족하는 파란색 자마 없음</span>", unsafe_allow_html=True)
@@ -623,9 +610,9 @@ else:
                         daughter_name = p['daughter']
                         child_name = p['child']
                         
-                        score, tier_text, badge_h = calculate_evaluation_score(child_name, is_elite_daughter=True)
+                        score, badge_h = calculate_evaluation_score(child_name, is_elite_daughter=True)
                         
-                        st.markdown(f"&nbsp;&nbsp;&nbsp;&nbsp;↳ {badge_h} {sire_clean_name} 직계딸: {daughter_name} --- <span class='highlight-elite-daughter'>{child_name}</span> (점수: <b>{score:.1f}</b>)", unsafe_allow_html=True)
+                        st.markdown(f"&nbsp;&nbsp;&nbsp;&nbsp;↳ {badge_h} {sire_clean_name} 직계딸: {daughter_name} --- <span class='highlight-elite-daughter'>{child_name}</span> (점수: <b>{score:.1f}점</b>)", unsafe_allow_html=True)
                         st.markdown(f"&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<div class='gauge-container'><div class='gauge-bar' style='width: {score}%;'></div></div>", unsafe_allow_html=True)
 
         st.markdown("---")
@@ -634,7 +621,27 @@ else:
             daughter_name = item['daughter']
             progeny_list = item['progeny']
             
-            st.markdown(f"<div class='elite-mare'>💎 [{idx}] {sire_clean_name} 직계딸: {daughter_name} (연결 자마: {len(progeny_list)}두)</div>", unsafe_allow_html=True)
+            # 🚀 [수정] 모마(직계딸)별 평균 점수 및 최고 등급 자동 산출 로직 추가
+            mare_scores = []
+            for p in progeny_list:
+                c_name = p['child']
+                is_ed = ('@' in c_name or '#' in c_name or '*' in c_name) and ('암' in c_name or '암)' in c_name)
+                g_match = g1_pattern.search(c_name)
+                is_hg1 = bool(g_match and int(g_match.group(1)) >= 7)
+                s, _ = calculate_evaluation_score(c_name, is_elite_daughter=is_ed, is_high_g1=is_hg1)
+                mare_scores.append(s)
+            
+            avg_mare_score = sum(mare_scores) / len(mare_scores) if mare_scores else 50.0
+            _, mare_badge = calculate_evaluation_score("", is_elite_daughter=(avg_mare_score >= 80))
+            if avg_mare_score >= 85:
+                mare_badge = "<span class='tier-badge-s-plus'>👑 S+ Tier</span>"
+            elif avg_mare_score >= 70:
+                mare_badge = "<span class='tier-badge-s'>🔥 S Tier</span>"
+            else:
+                mare_badge = "<span class='tier-badge-a'>✨ A Tier</span>"
+
+            # 직계 딸 타이틀 옆에 모마 종합 점수 및 등급 배지 렌더링
+            st.markdown(f"<div class='elite-mare'>💎 [{idx}] {mare_badge} {sire_clean_name} 직계딸: {daughter_name} (연결 자마: {len(progeny_list)}두) — 모마 종합 평가: <b>{avg_mare_score:.1f}점</b></div>", unsafe_allow_html=True)
             
             for p in progeny_list:
                 child_name = p['child']
@@ -667,7 +674,7 @@ else:
                 else:
                     father_display = f"<b>{father_name}</b>"
                     
-                score, tier_text, badge_h = calculate_evaluation_score(child_name, is_elite_daughter=is_elite_daughter, is_high_g1=is_high_g1)
+                score, badge_h = calculate_evaluation_score(child_name, is_elite_daughter=is_elite_daughter, is_high_g1=is_high_g1)
                 
-                st.markdown(f"<div class='progeny-item'>🔗 [{badge_h}] [연결 자마] {child_display} (부마: {father_display}) - 점수: <b>{score:.1f}</b></div>", unsafe_allow_html=True)
+                st.markdown(f"<div class='progeny-item'>🔗 [{badge_h}] [연결 자마] {child_display} (부마: {father_display}) — 점수: <b>{score:.1f}</b></div>", unsafe_allow_html=True)
                 st.markdown(f"<div style='margin-left: 25px;'><div class='gauge-container' style='width: 60%;'><div class='gauge-bar' style='width: {score}%;'></div></div></div>", unsafe_allow_html=True)
