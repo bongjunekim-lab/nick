@@ -433,8 +433,9 @@ if "1." in view_mode:
             if bms_full and bms_full != "미상":
                 bms_grouped_items[bms_full].append(item)
 
+        # 🚀 [복구 완료] 씨수말 관점 전수조사 상단 외조부마(Nick BMS) 범례 및 자마 목록 출력 블록
         if nick_bms:
-            st.markdown("**🎨 주요 외조부마(Nick BMS, 2두 이상) 범례 및 파란색(특수) 자마 목록:**")
+            st.markdown("🎨 **주요 외조부마(Nick BMS, 2두 이상) 범례 및 파란색(특수) 자마 목록:**")
             for bms_name in nick_bms:
                 b_c, bg_c = nick_style_map[bms_name]
                 cnt = bms_counts[bms_name]
@@ -486,7 +487,6 @@ if "1." in view_mode:
 
             dam_str = f"--- 🔗 (모마: {dam_display})"
             
-            # 🚀 [완벽 복구 완료] 탭 1 리스트 항목에 외조부마 닉(BMS Style) 색상 및 배지 적용
             if item['bms'] in nick_style_map:
                 b_c, bg_c = nick_style_map[item['bms']]
                 bms_style = f"| <span style='color:{b_c}; background-color:{bg_c}; font-weight:bold; padding:2px 6px; border-radius:4px; border:1px solid {b_c}80;'>[외조부마: {bms_display}]</span>"
