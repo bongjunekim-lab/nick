@@ -9,11 +9,6 @@ def clean_name_symbols(text):
     cleaned = re.sub(r'^[\d\s\W_]+', '', text)
     return cleaned.strip()
 
-def extract_year(text):
-    """마명 또는 텍스트에서 4자리 출생 연도를 추출합니다."""
-    match = re.search(r'\b(18\d{2}|19\d{2}|20\d{2})\b', text)
-    return int(match.group(1)) if match else None
-
 def normalize_name(text):
     """이름 정제 및 비교용 표준화"""
     clean = text.replace('@', '').replace('#', '').replace('*', '')
@@ -40,7 +35,7 @@ def is_valid_mare(name):
     return True
 
 # 1. 페이지 설정
-st.set_page_config(page_title="씨수말 & 외조부마(BMS) 통합 혈통 닉 분석기 (Pro Ranked Edition)", layout="wide")
+st.set_page_config(page_title="씨수말 & 외조부마(BMS) 통합 혈통 닉 분석기 (Fast Score Edition)", layout="wide")
 
 # CSS 스타일 정의
 st.markdown("""
@@ -313,50 +308,8 @@ def analyze_bms_perspective(root, target_sire_query, id_to_text, id_to_parent_te
     traverse(root)
     return results
 
-# 마인드맵 전체 후보군의 순위 집계를 위한 헬퍼 함수
-@st.cache_data
-def compute_all_entity_scores():
-    root_node, id_to_text, id_to_parent_text, id_to_node, err = load_mindmap_data()
-    if err:
-        return {}, {}
-    
-    all_nodes = [node.get('TEXT', '') for node in root_node.iter('node') if node.get('TEXT')]
-    
-    sire_scores = {}
-    bms_scores = {}
-    
-    # 주요 후보군 추출 (상위 레벨 노드들)
-    for node in root_node.iter('node'):
-        text = node.get('TEXT', '')
-        if not text:
-            continue
-        clean_name = clean_name_symbols(text)
-        year = extract_year(text)
-        
-        # 씨수말 관점 점수 계산
-        sire_res = analyze_sire_perspective(root_node, clean_name, id_to_text, id_to_parent_text)
-        if sire_res:
-            s_score = sum(calculate_evaluation_score(item['progeny'])[0] for item in sire_res)
-            sire_scores[clean_name] = {'score': s_score, 'year': year}
-            
-        # 외조부마 관점 점수 계산
-        bms_res = analyze_bms_perspective(root_node, clean_name, id_to_text, id_to_parent_text)
-        if bms_res:
-            b_score = 0.0
-            for item in bms_res:
-                for p in item['progeny']:
-                    c_name = p['child']
-                    is_ed = ('@' in c_name or '#' in c_name or '*' in c_name) and ('암' in c_name or '암)' in c_name)
-                    g_match = re.search(r'G1-(\d+)', c_name)
-                    is_hg1 = bool(g_match and int(g_match.group(1)) >= 7)
-                    s, _ = calculate_evaluation_score(c_name, is_elite_daughter=is_ed, is_high_g1=is_hg1)
-                    b_score += s
-            bms_scores[clean_name] = {'score': b_score, 'year': year}
-            
-    return sire_scores, bms_scores
-
 # UI 화면 타이틀
-st.title("🐎 씨수말 & 외조부마(BMS) 통합 혈통 닉 분석기 (Pro Ranked & Filter Edition)")
+st.title("🐎 씨수말 & 외조부마(BMS) 통합 혈통 닉 분석기 (Fast Score Edition)")
 
 root_node, id_to_text, id_to_parent_text, id_to_node, err = load_mindmap_data()
 if err:
@@ -366,11 +319,6 @@ if err:
 # 사이드바 설정 영역
 st.sidebar.header("🔍 검색 설정")
 search_sire = st.sidebar.text_input("씨수말 이름을 입력하세요", value="Never Bend")
-
-st.sidebar.markdown("---")
-st.sidebar.markdown("### ⏳ 시대별(출생 연도) 필터 조절")
-year_filter_active = st.sidebar.checkbox("출생 연도 필터 적용", value=False)
-min_year, max_year = st.sidebar.slider("비교 대상 연도 범위 설정", 1930, 2000, (1940, 1990))
 
 st.sidebar.markdown("---")
 st.sidebar.markdown("### 🔀 분석 관점 선택")
@@ -394,17 +342,6 @@ if not search_sire.strip():
 
 sire_clean_name = clean_name_symbols(search_sire)
 g1_pattern = re.compile(r'G1-(\d+)')
-
-# 전체 순위 집계 데이터 로드
-all_sire_scores, all_bms_scores = compute_all_entity_scores()
-
-# 연도 필터가 켜져 있을 경우 순위 비교 풀(Pool) 조정
-if year_filter_active:
-    filtered_sire_pool = {k: v['score'] for k, v in all_sire_scores.items() if v['year'] and min_year <= v['year'] <= max_year}
-    filtered_bms_pool = {k: v['score'] for k, v in all_bms_scores.items() if v['year'] and min_year <= v['year'] <= max_year}
-else:
-    filtered_sire_pool = {k: v['score'] for k, v in all_sire_scores.items()}
-    filtered_bms_pool = {k: v['score'] for k, v in all_bms_scores.items()}
 
 # =========================================================================
 # [탭 1] 씨수말(Sire) 관점 전수조사 실행 결과 출력
@@ -435,21 +372,12 @@ if "1." in view_mode:
         total_progeny_count = len(sire_data)
         elite_count = sum(1 for item in sire_data if ('@' in item['progeny'] or '#' in item['progeny'] or '*' in item['progeny'] or bool(g1_pattern.search(item['progeny']))))
         
-        # 스코어 및 순위 산출
+        # 🚀 순위 연산 없이 즉시 계산되는 누적 스코어
         total_sire_score = sum(calculate_evaluation_score(item['progeny'])[0] for item in sire_data)
         
-        # 씨수말 순위 계산
-        sorted_sires = sorted(filtered_sire_pool.items(), key=lambda x: x[1], reverse=True)
-        sire_rank = "순위 외"
-        for idx, (name, score) in enumerate(sorted_sires, 1):
-            if normalize_name(name) == normalize_name(sire_clean_name):
-                sire_rank = f"{idx}위 / 총 {len(sorted_sires)}두"
-                break
-
-        # 외조부마 스코어 및 순위 계산 (비교용)
-        bms_data_for_rank = analyze_bms_perspective(root_node, search_sire, id_to_text, id_to_parent_text)
+        bms_data_for_calc = analyze_bms_perspective(root_node, search_sire, id_to_text, id_to_parent_text)
         total_bms_score_calc = 0.0
-        for item in bms_data_for_rank:
+        for item in bms_data_for_calc:
             for p in item['progeny']:
                 c_name = p['child']
                 is_ed = ('@' in c_name or '#' in c_name or '*' in c_name) and ('암' in c_name or '암)' in c_name)
@@ -458,22 +386,15 @@ if "1." in view_mode:
                 s, _ = calculate_evaluation_score(c_name, is_elite_daughter=is_ed, is_high_g1=is_hg1)
                 total_bms_score_calc += s
 
-        sorted_bms = sorted(filtered_bms_pool.items(), key=lambda x: x[1], reverse=True)
-        bms_rank = "순위 외"
-        for idx, (name, score) in enumerate(sorted_bms, 1):
-            if normalize_name(name) == normalize_name(sire_clean_name):
-                bms_rank = f"{idx}위 / 총 {len(sorted_bms)}두"
-                break
-
         col1, col2, col3, col4 = st.columns(4)
         with col1:
             st.metric(label="📊 직계 배출 자마 수", value=f"{total_progeny_count}두")
         with col2:
             st.metric(label="🌟 엘리트/G급 자마", value=f"{elite_count}두")
         with col3:
-            st.metric(label="🧬 씨수말 누적 스코어", value=f"{total_sire_score:.1f}점", delta=f"전체 순위: {sire_rank}")
+            st.metric(label="🧬 씨수말 누적 스코어", value=f"{total_sire_score:.1f}점")
         with col4:
-            st.metric(label="🏛️ 외조부마 누적 스코어", value=f"{total_bms_score_calc:.1f}점", delta=f"전체 순위: {bms_rank}")
+            st.metric(label="🏛️ 씨암말(외조부마) 누적 스코어", value=f"{total_bms_score_calc:.1f}점")
 
         bg_palette = ["#E3F2FD", "#E0F2F1", "#F3E5F5", "#E8F5E9", "#FBE9E7", "#FFFDE7", "#E1F5FE"]
         border_palette = ["#0055CC", "#00796B", "#7B1FA2", "#388E3C", "#E64A19", "#FBC02D", "#0288D1"]
@@ -559,15 +480,15 @@ if "1." in view_mode:
             st.markdown(f"<div class='progeny-item'>🐴 [{idx}] {badge_h} <b>{child_display}</b> {dam_str} {bms_style} (가중 점수: <b>{score:.1f}점</b>)</div>", unsafe_allow_html=True)
             st.markdown(f"<div style='margin-left: 25px;'><div class='gauge-container' style='width: 60%;'><div class='gauge-bar' style='width: {min(score/5, 100)}%;'></div></div></div>", unsafe_allow_html=True)
 
-        # 🚀 [최하단] 종합 브리딩 점수 및 순위 카드
+        # 🚀 [최하단] 종합 브리딩 점수 카드 (순위 제외)
         total_comprehensive_score = total_sire_score + total_bms_score_calc
         st.markdown(f"""
         <div class='summary-card'>
             <h2>🏆 [{sire_clean_name}] 최종 종합 브리딩 스코어보드</h2>
-            <p style='font-size: 1.15em;'>씨수말 직계 기여도와 외조부마(모계) 파급력을 전략적으로 합산한 최종 평가입니다.</p>
+            <p style='font-size: 1.15em;'>씨수말 직계 기여도와 씨암말(외조부마) 모계 파급력을 전략적으로 합산한 최종 평가입니다.</p>
             <hr style='border: 1px solid #0055CC; width: 50%; margin: 15px auto;'>
             <h3 style='color: #0055CC;'>✨ 종합 통합 점수: <b>{total_comprehensive_score:.1f} 점</b></h3>
-            <p>씨수말 순위: <b>{sire_rank}</b> | 외조부마 순위: <b>{bms_rank}</b></p>
+            <p>씨수말 누적 점수: <b>{total_sire_score:.1f}점</b> | 씨암말(외조부마) 누적 점수: <b>{total_bms_score_calc:.1f}점</b></p>
         </div>
         """, unsafe_allow_html=True)
 
@@ -599,7 +520,7 @@ else:
         nick_sires = [father for father, count in father_counts.items() if count >= 2 and father != "정보 없음"]
         single_sires = [father for father, count in father_counts.items() if count == 1 and father != "정보 없음"]
 
-        # 스코어 및 순위 산출
+        # 🚀 순위 연산 없이 즉시 계산되는 스코어
         total_bms_score = 0.0
         for item in bms_data:
             for p in item['progeny']:
@@ -610,23 +531,8 @@ else:
                 s, _ = calculate_evaluation_score(c_name, is_elite_daughter=is_ed, is_high_g1=is_hg1)
                 total_bms_score += s
 
-        sorted_bms = sorted(filtered_bms_pool.items(), key=lambda x: x[1], reverse=True)
-        bms_rank = "순위 외"
-        for idx, (name, score) in enumerate(sorted_bms, 1):
-            if normalize_name(name) == normalize_name(sire_clean_name):
-                bms_rank = f"{idx}위 / 총 {len(sorted_bms)}두"
-                break
-
-        # 씨수말 스코어 및 순위 계산 (비교용)
-        sire_data_for_rank = analyze_sire_perspective(root_node, search_sire, id_to_text, id_to_parent_text)
-        total_sire_score_calc = sum(calculate_evaluation_score(item['progeny'])[0] for item in sire_data_for_rank)
-        
-        sorted_sires = sorted(filtered_sire_pool.items(), key=lambda x: x[1], reverse=True)
-        sire_rank = "순위 외"
-        for idx, (name, score) in enumerate(sorted_sires, 1):
-            if normalize_name(name) == normalize_name(sire_clean_name):
-                sire_rank = f"{idx}위 / 총 {len(sorted_sires)}두"
-                break
+        sire_data_for_calc = analyze_sire_perspective(root_node, search_sire, id_to_text, id_to_parent_text)
+        total_sire_score_calc = sum(calculate_evaluation_score(item['progeny'])[0] for item in sire_data_for_calc)
 
         col1, col2, col3, col4 = st.columns(4)
         with col1:
@@ -634,9 +540,9 @@ else:
         with col2:
             st.metric(label="🔗 연결된 총 후대 자마", value=f"{sum(len(item['progeny']) for item in bms_data)}두")
         with col3:
-            st.metric(label="🏛️ 외조부마 누적 스코어", value=f"{total_bms_score:.1f}점", delta=f"전체 순위: {bms_rank}")
+            st.metric(label="🏛️ 씨암말(외조부마) 누적 스코어", value=f"{total_bms_score:.1f}점")
         with col4:
-            st.metric(label="🧬 씨수말 누적 스코어", value=f"{total_sire_score_calc:.1f}점", delta=f"전체 순위: {sire_rank}")
+            st.metric(label="🧬 씨수말 누적 스코어", value=f"{total_sire_score_calc:.1f}점")
 
         bg_palette = ["#E3F2FD", "#E0F2F1", "#F3E5F5", "#E8F5E9", "#FBE9E7", "#FFFDE7", "#E1F5FE"]
         border_palette = ["#0055CC", "#00796B", "#7B1FA2", "#388E3C", "#E64A19", "#FBC02D", "#0288D1"]
@@ -725,14 +631,14 @@ else:
                 st.markdown(f"<div class='progeny-item'>🔗 [{badge_h}] [연결 자마] {child_display} (부마: {father_display}) — 가중 점수: <b>{score:.1f}점</b></div>", unsafe_allow_html=True)
                 st.markdown(f"<div style='margin-left: 25px;'><div class='gauge-container' style='width: 60%;'><div class='gauge-bar' style='width: {min(score/5, 100)}%;'></div></div></div>", unsafe_allow_html=True)
 
-        # 🚀 [최하단] 종합 브리딩 점수 및 순위 카드
+        # 🚀 [최하단] 종합 브리딩 점수 카드 (순위 제외)
         total_comprehensive_score = total_sire_score_calc + total_bms_score
         st.markdown(f"""
         <div class='summary-card'>
             <h2>🏆 [{sire_clean_name}] 최종 종합 브리딩 스코어보드</h2>
-            <p style='font-size: 1.15em;'>씨수말 직계 기여도와 외조부마(모계) 파급력을 전략적으로 합산한 최종 평가입니다.</p>
+            <p style='font-size: 1.15em;'>씨수말 직계 기여도와 씨암말(외조부마) 모계 파급력을 전략적으로 합산한 최종 평가입니다.</p>
             <hr style='border: 1px solid #0055CC; width: 50%; margin: 15px auto;'>
             <h3 style='color: #0055CC;'>✨ 종합 통합 점수: <b>{total_comprehensive_score:.1f} 점</b></h3>
-            <p>씨수말 순위: <b>{sire_rank}</b> | 외조부마 순위: <b>{bms_rank}</b></p>
+            <p>씨수말 누적 점수: <b>{total_sire_score_calc:.1f}점</b> | 씨암말(외조부마) 누적 점수: <b>{total_bms_score:.1f}점</b></p>
         </div>
         """, unsafe_allow_html=True) 
