@@ -37,7 +37,7 @@ def is_valid_mare(name):
 # 1. 페이지 설정
 st.set_page_config(page_title="씨수말 & 외조부마(BMS) 통합 혈통 닉 분석기 (Comfortable Gauge Edition)", layout="wide")
 
-# CSS 스타일 정의 (눈이 편안한 게이지 바 색상 적용)
+# CSS 스타일 정의 (눈이 편안한 게이지 바 및 스타일 적용)
 st.markdown("""
     <style>
     .elite-mare {
@@ -135,7 +135,6 @@ st.markdown("""
         font-weight: bold;
         font-size: 0.85em;
     }
-    /* 🚀 [눈부심 방지 및 가독성 최적화된 게이지 바 스타일] */
     .gauge-container {
         background-color: #EAECEE;
         border-radius: 4px;
@@ -486,6 +485,8 @@ if "1." in view_mode:
                 child_display = child_name
 
             dam_str = f"--- 🔗 (모마: {dam_display})"
+            
+            # 🚀 [복구 완료] 탭 1 리스트 항목에 외조부마 닉(BMS Style) 적용
             if item['bms'] in nick_style_map:
                 b_c, bg_c = nick_style_map[item['bms']]
                 bms_style = f"| <span style='color:{b_c}; background-color:{bg_c}; font-weight:bold; padding:2px 6px; border-radius:4px; border:1px solid {b_c}80;'>[외조부마: {bms_display}]</span>"
