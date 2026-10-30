@@ -37,15 +37,17 @@ def is_valid_mare(name):
 # 1. 페이지 설정
 st.set_page_config(page_title="씨수말 & 외조부마(BMS) 통합 혈통 닉 분석기 (Fixed Edition)", layout="wide")
 
-# CSS 스타일 정의 (진한 파란색 및 특수문자/G1-7 스타일 포함)
+# CSS 스타일 정의 (간격 확대 및 막대바 연하게 조정 포함)
 st.markdown("""
     <style>
     .elite-mare {
         color: #1B4F72 !important;
         font-weight: bold;
         font-size: 1.25em;
-        margin-top: 15px;
-        margin-bottom: 6px;
+        margin-top: 35px; /* 항목 간격 확대 */
+        margin-bottom: 8px;
+        padding-top: 15px;
+        border-top: 1px dashed #D5D8DC; /* 시각적 구분선 추가 */
     }
     .progeny-item {
         margin-left: 25px;
@@ -117,18 +119,18 @@ st.markdown("""
         font-size: 0.85em;
     }
     .gauge-container {
-        background-color: #EAECEE;
+        background-color: #F2F4F4;
         border-radius: 4px;
         width: 100%;
-        height: 8px;
-        margin-top: 4px;
-        margin-bottom: 8px;
+        height: 6px;
+        margin-top: 3px;
+        margin-bottom: 10px;
         overflow: hidden;
-        border: 1px solid #D5D8DC;
+        border: 1px solid #EAEDED;
     }
     .gauge-bar {
         height: 100%;
-        background: linear-gradient(90deg, #85C1E9, #1B4F72);
+        background: linear-gradient(90deg, #D4E6F1, #85C1E9); /* 막대바를 더 연하게 지정 */
         border-radius: 3px;
     }
     .summary-card-top {
@@ -611,8 +613,8 @@ else:
             else:
                 mare_badge = "<span class='tier-badge-a'>✨ A Tier</span>"
 
-            # 직계딸별 메인 타이틀에서는 "직계딸:" 문구 삭제
-            st.markdown(f"<div class='elite-mare'>💎 [{idx}] {mare_badge} {sire_clean_name}: {daughter_name} (연결 자마: {len(progeny_list)}두) — 모마 하이브리드 종합 평가: <b>{hybrid_mare_score:.1f}점</b></div>", unsafe_allow_html=True)
+            # 직계딸별 메인 타이틀에서 씨수말 이름 및 "직계딸:" 표기 일괄 삭제
+            st.markdown(f"<div class='elite-mare'>💎 [{idx}] {mare_badge} {daughter_name} (연결 자마: {len(progeny_list)}두) — 모마 하이브리드 종합 평가: <b>{hybrid_mare_score:.1f}점</b></div>", unsafe_allow_html=True)
             
             for p in progeny_list:
                 child_name = p['child']
@@ -641,4 +643,5 @@ else:
                     child_display = child_name
 
                 st.markdown(f"<div class='progeny-item'>🔗 {badge_h} [연결 자마] {child_display} (부마: {father_display}) — 가중 점수: <b>{score:.1f}점</b></div>", unsafe_allow_html=True)
-                st.markdown(f"<div style='margin-left: 25px;'><div class='gauge-container'><div class='gauge-bar' style='width: {min(score/5, 100)}%;'></div></div></div>", unsafe_allow_html=True) 
+                st.markdown(f"<div style='margin-left: 25px;'><div class='gauge-container'><div class='gauge-bar' style='width: {min(score/5, 100)}%;'></div></div></div>", unsafe_allow_html=True)
+                
