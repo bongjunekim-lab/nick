@@ -171,8 +171,8 @@ g1_pattern = re.compile(r'G1\s*[:\-\.]?\s*(\d+)')
 
 def check_special_condition(text):
     """암말 @, # 기호 보유 또는 수말 G1 우승 자마 두수 7두 이상 여부 체크"""
-    g1_match = g1_pattern.search(text)
-    g1_wins = int(g1_match.group(1)) if g1_match else 0
+    g1_matches = g1_pattern.findall(text)
+    g1_wins = max([int(x) for x in g1_matches]) if g1_matches else 0
     is_daughter = is_valid_mare(text)
     
     is_special_mare = is_daughter and any(sym in text for sym in ['@', '#'])
@@ -182,8 +182,10 @@ def check_special_condition(text):
 
 def calculate_evaluation_score(text, is_elite_daughter=False, is_high_g1=False):
     score = 30.0
-    g1_match = g1_pattern.search(text)
-    g1_wins = int(g1_match.group(1)) if g1_match else 0
+    
+    # ✅ 수정됨: 텍스트 내 모든 G1 매칭 값을 찾아 가장 큰 값(진짜 G1 우승/배출 수 지표)을 채택
+    g1_matches = g1_pattern.findall(text)
+    g1_wins = max([int(x) for x in g1_matches]) if g1_matches else 0
     
     score += g1_wins * 10.0
     if is_elite_daughter:
@@ -337,8 +339,8 @@ for item in bms_data_for_calc:
     for p in item['progeny']:
         c_name = p['child']
         is_ed = is_valid_mare(c_name) and any(sym in c_name for sym in ['@', '#'])
-        g_match = g1_pattern.search(c_name)
-        g1_wins = int(g_match.group(1)) if g_match else 0
+        g_matches = g1_pattern.findall(c_name)
+        g1_wins = max([int(x) for x in g_matches]) if g_matches else 0
         is_hg1 = (not is_valid_mare(c_name)) and (g1_wins >= 7)
         s, _ = calculate_evaluation_score(c_name, is_elite_daughter=is_ed, is_high_g1=is_hg1)
         total_bms_score += s
@@ -385,7 +387,6 @@ if "1." in view_mode:
                 if check_special_condition(c_name) or '*' in c_name:
                     bms_has_special_progeny[bms] = True
 
-        # ✅ [닉스 정렬 핵심] 자마 두수가 많은 순서(내림차순)로 상단 리스트 대상 선정 및 정렬
         target_bms_list = [bms for bms in bms_counts.keys() if bms != "미상" and (bms_counts[bms] >= 2 or bms_has_special_progeny[bms])]
         target_bms_list.sort(key=lambda x: bms_counts[x], reverse=True)
         
@@ -409,7 +410,6 @@ if "1." in view_mode:
         for idx, ns in enumerate(target_bms_list):
             nick_style_map[ns] = (border_palette[idx % len(border_palette)], bg_palette[idx % len(bg_palette)])
 
-        # ✅ [상단 배치] 닉 많은 순서로 색상별 대표 리스트 및 매칭 자마 하단 나열
         st.markdown("---")
         st.markdown("### 🎨 색상별 주요 외조부마 닉(Nick) 상단 리스트 (자마 두수 많은 순 정렬)")
         
@@ -509,7 +509,6 @@ else:
                     'child': c_name
                 })
 
-        # ✅ [닉스 정렬 핵심] 교배 부마 역시 자마 두수가 많은 순서(내림차순)로 정렬
         target_sires = [father for father in father_counts.keys() if father != "정보 없음" and (father_counts[father] >= 2 or father_has_special_progeny[father])]
         target_sires.sort(key=lambda x: father_counts[x], reverse=True)
 
@@ -530,7 +529,6 @@ else:
         for idx, ns in enumerate(target_sires):
             nick_style_map[ns] = (border_palette[idx % len(border_palette)], bg_palette[idx % len(bg_palette)])
 
-        # ✅ [상단 배치] 닉 많은 순서로 교배 부마 대표 리스트 및 매칭 자마 하단 나열
         st.markdown("---")
         st.markdown("### 🎨 색상별 주요 교배 부마 닉(Nick) 상단 리스트 (자마 두수 많은 순 정렬)")
 
@@ -574,8 +572,8 @@ else:
             for p in progeny_list:
                 c_name = p['child']
                 is_ed = is_valid_mare(c_name) and any(sym in c_name for sym in ['@', '#'])
-                g_match = g1_pattern.search(c_name)
-                g1_wins = int(g_match.group(1)) if g_match else 0
+                g_matches = g1_pattern.findall(c_name)
+                g1_wins = max([int(x) for x in g_matches]) if g_matches else 0
                 is_hg1 = (not is_valid_mare(c_name)) and (g1_wins >= 7)
                 s, _ = calculate_evaluation_score(c_name, is_elite_daughter=is_ed, is_high_g1=is_hg1)
                 mare_scores.append(s)
