@@ -170,7 +170,7 @@ def load_mindmap_data():
     except Exception as e:
         return None, None, None, None, f"파일 분석 오류: {str(e)}"
 
-# ✅ [초고도화된 파생 G1 파싱 패턴] 하이픈, 공백, 콜론, 점 등 다양한 형태의 구분자와 숫자를 유연하게 수용
+# ✅ [초고도화된 파생 G1 파싱 패턴] 다양한 파생 형태를 안전하게 수용
 g1_pattern = re.compile(r'G1\s*[:\-\.]?\s*(\d+)')
 
 def calculate_evaluation_score(text, is_elite_daughter=False, is_high_g1=False):
@@ -381,7 +381,6 @@ if "1." in view_mode:
                 g_match = g1_pattern.search(c_name)
                 g_wins = int(g_match.group(1)) if g_match else 0
                 is_dau = is_valid_mare(c_name)
-                # ✅ [조건 반영] 1. 암말 @, #, * 기호 보유 OR 2. 수말 G1 우승 자마 두수 7두 이상 배출
                 if (is_dau and any(sym in c_name for sym in ['@', '#', '*'])) or (not is_dau and g_wins >= 7):
                     bms_has_special_progeny[bms] = True
 
@@ -535,8 +534,8 @@ else:
                 father_counts[f_name] += 1
                 
                 c_name = p['child']
-                g_match = g1_pattern.search(c_name)
-                g_wins = int(g_match.group(1)) if g_match else 0
+                g1_match = g1_pattern.search(c_name)
+                g_wins = int(g1_match.group(1)) if g1_match else 0
                 is_dau = is_valid_mare(c_name)
                 if (is_dau and any(sym in c_name for sym in ['@', '#', '*'])) or (not is_dau and g_wins >= 7):
                     father_has_special_progeny[f_name] = True
@@ -593,6 +592,7 @@ else:
                         child_name = p['child']
                         is_daughter = is_valid_mare(child_name)
                         g1_match = g1_pattern.search(child_name)
+                        # ✅ [에러 방어 수정] g1_match가 None일 경우 안전하게 0으로 처리
                         g1_wins = int(g1_match.group(1)) if g1_match else 0
                         
                         is_high_g1_son = (not is_daughter) and (g1_wins >= 7)
@@ -620,7 +620,7 @@ else:
                 c_name = p['child']
                 is_ed = is_valid_mare(c_name) and any(sym in c_name for sym in ['@', '#', '*'])
                 g_match = g1_pattern.search(c_name)
-                g1_wins = int(g_match.group(1)) if g1_match else 0
+                g1_wins = int(g_match.group(1)) if g_match else 0
                 is_hg1 = (not is_valid_mare(c_name)) and (g1_wins >= 7)
                 s, _ = calculate_evaluation_score(c_name, is_elite_daughter=is_ed, is_high_g1=is_hg1)
                 mare_scores.append(s)
@@ -672,4 +672,4 @@ else:
                     child_display = child_name
 
                 st.markdown(f"<div class='progeny-item'>🔗 {badge_h} [연결 자마] {child_display} (부마: {father_display}) — 가중 점수: <b>{score:.1f}점</b></div>", unsafe_allow_html=True)
-                st.markdown(f"<div style='margin-left: 25px;'><div class='gauge-container'><div class='gauge-bar' style='width: {min(score/5, 100)}%;'></div></div></div>", unsafe_allow_html=True)
+                st.markdown(f"<div style='margin-left: 25px;'><div class='gauge-container'><div class='gauge-bar' style='width: {min(score/5, 100)}%;'></div></div></div>", unsafe_allow_html=True) 
