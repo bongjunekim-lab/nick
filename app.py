@@ -35,9 +35,9 @@ def is_valid_mare(name):
     return True
 
 # 1. 페이지 설정
-st.set_page_config(page_title="씨수말 & 외조부마(BMS) 통합 혈통 닉 분석기 (Comfortable Gauge Edition)", layout="wide")
+st.set_page_config(page_title="씨수말 & 외조부마(BMS) 통합 혈통 닉 분석기 (Fixed Edition)", layout="wide")
 
-# CSS 스타일 정의 (눈부심 없는 게이지 바 및 닉 배지 스타일)
+# CSS 스타일 정의 (눈부심 방지 게이지 바 및 닉 배지 스타일)
 st.markdown("""
     <style>
     .elite-mare {
@@ -76,31 +76,12 @@ st.markdown("""
         border-radius: 6px;
         display: inline-block;
     }
-    .single-sire-title {
-        font-size: 1.15em !important;
-        font-weight: bold !important;
-        padding: 6px 12px !important;
-        border-radius: 6px;
-        display: inline-block;
-        background-color: #EBF5FB !important;
-        color: #2471A3 !important;
-        border: 1px solid #AED6F1 !important;
-        margin-top: 10px;
-        margin-bottom: 5px;
-    }
     .info-box {
         background-color: #F8F9F9;
         padding: 12px 18px;
         border-radius: 8px;
         margin-bottom: 15px;
         border: 1px solid #D5DBDB;
-    }
-    .layer-a-box {
-        background-color: #FEF9E7;
-        border-left: 5px solid #F39C12;
-        padding: 10px 15px;
-        margin-bottom: 15px;
-        border-radius: 4px;
     }
     .tier-badge-legendary {
         background: linear-gradient(135deg, #F39C12, #D35400);
@@ -135,7 +116,6 @@ st.markdown("""
         font-weight: bold;
         font-size: 0.85em;
     }
-    /* 🚀 [눈부심 방지 및 가독성 최적화된 게이지 바 스타일] */
     .gauge-container {
         background-color: #EAECEE;
         border-radius: 4px;
@@ -165,7 +145,6 @@ st.markdown("""
 
 @st.cache_data
 def load_mindmap_data():
-    """xml/mm 파일 전체 노드 데이터 및 parent-child 맵핑 데이터 로드"""
     file_path = '우수한 경주마(수말, 암말).mm'
     if not os.path.exists(file_path):
         return None, None, None, None, f"'{file_path}' 파일을 찾을 수 없습니다."
@@ -194,7 +173,6 @@ def load_mindmap_data():
         return None, None, None, None, f"파일 분석 오류: {str(e)}"
 
 def calculate_evaluation_score(text, is_elite_daughter=False, is_high_g1=False):
-    """프로페셔널 오픈 스케일 가중치 산식"""
     score = 30.0
     g1_match = re.search(r'G1-(\d+)', text)
     g1_wins = int(g1_match.group(1)) if g1_match else 0
@@ -311,7 +289,7 @@ def analyze_bms_perspective(root, target_sire_query, id_to_text, id_to_parent_te
     return results
 
 # UI 화면 타이틀
-st.title("🐎 씨수말 & 외조부마(BMS) 통합 혈통 닉 분석기 (Comfortable Gauge Edition)")
+st.title("🐎 씨수말 & 외조부마(BMS) 통합 혈통 닉 분석기")
 
 root_node, id_to_text, id_to_parent_text, id_to_node, err = load_mindmap_data()
 if err:
@@ -434,7 +412,7 @@ if "1." in view_mode:
             if bms_full and bms_full != "미상":
                 bms_grouped_items[bms_full].append(item)
 
-        # 🚀 [완벽 복구] 씨수말 관점 전수조사 상단 외조부마(Nick BMS) 범례 및 자마 목록 출력 블록
+        # 🎨 씨수말 관점 상단 외조부마(Nick BMS) 범례 및 자마 목록 출력
         if nick_bms:
             st.markdown("🎨 **주요 외조부마(Nick BMS, 2두 이상) 범례 및 파란색(특수) 자마 목록:**")
             for bms_name in nick_bms:
@@ -488,7 +466,7 @@ if "1." in view_mode:
 
             dam_str = f"--- 🔗 (모마: {dam_display})"
             
-            # 🚀 [완벽 복구] 탭 1 리스트 항목에 외조부마 닉(BMS Style) 색상 및 배지 적용
+            # 🚀 [핵심 수정] 씨수말 관점 리스트 각 항목에 외조부마 닉(BMS Style) 색상 및 배지 적용
             if item['bms'] in nick_style_map:
                 b_c, bg_c = nick_style_map[item['bms']]
                 bms_style = f"| <span style='color:{b_c}; background-color:{bg_c}; font-weight:bold; padding:2px 6px; border-radius:4px; border:1px solid {b_c}80;'>[외조부마: {bms_display}]</span>"
