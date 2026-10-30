@@ -26,19 +26,16 @@ def is_valid_mare(name):
     """
     if not name:
         return False
-    # 명백한 수말 표기가 있는 경우는 차단
     if '수)' in name and '암' not in name:
         return False
-    # '암' 글자가 포함되어 있으면 정상적인 암말(직계딸)로 통과
     if '암' in name or '암)' in name:
         return True
-    # 기본적으로 기호나 형태상 암말 범주에 속하는 경우 허용하되, 명백한 수말 씨수말 이름은 차단
     if 'speightstown' in name.lower() or 'sire' in name.lower():
         return False
     return True
 
 # 1. 페이지 설정
-st.set_page_config(page_title="씨수말 & 외조부마(BMS) 통합 혈통 닉 분석기", layout="wide")
+st.set_page_config(page_title="씨수말 & 외조부마(BMS) 통합 혈통 닉 분석기 (Layer A 연계)", layout="wide")
 
 # CSS 스타일 정의
 st.markdown("""
@@ -108,6 +105,13 @@ st.markdown("""
         margin-top: 15px;
         margin-bottom: 6px;
     }
+    .layer-a-box {
+        background-color: #FFF3E0;
+        border-left: 5px solid #FF9800;
+        padding: 10px 15px;
+        margin-bottom: 15px;
+        border-radius: 4px;
+    }
     </style>
 """, unsafe_allow_html=True)
 
@@ -142,7 +146,7 @@ def load_mindmap_data():
         return None, None, None, None, f"파일 분석 오류: {str(e)}"
 
 # -------------------------------------------------------------------------
-# [관점 1] 씨수말 전수조사 분석 함수
+# [관점 1] 씨수말 전수조사 분석 함수 (Layer A 연계)
 # -------------------------------------------------------------------------
 def analyze_sire_perspective(root, target_sire_query, id_to_text, id_to_parent_text):
     query_norm = normalize_name(target_sire_query)
@@ -211,7 +215,6 @@ def analyze_bms_perspective(root, target_sire_query, id_to_text, id_to_parent_te
         if query_norm in normalize_name(my_text):
             for child in node.findall('node'):
                 child_text = child.get('TEXT', '')
-                # 유효한 암말 검증 통과 항목만 직계 딸로 인정
                 if is_valid_mare(child_text):
                     progeny_list = []
                     seen_ids = set()
@@ -257,7 +260,7 @@ if err:
 
 # 사이드바 설정 영역
 st.sidebar.header("🔍 검색 설정")
-search_sire = st.sidebar.text_input("씨수말 이름을 입력하세요", value="a.p. indy")
+search_sire = st.sidebar.text_input("씨수말 이름을 입력하세요", value="Tom Fool")
 
 st.sidebar.markdown("---")
 st.sidebar.markdown("### 🔀 분석 관점 선택")
@@ -283,11 +286,11 @@ sire_clean_name = clean_name_symbols(search_sire)
 g1_pattern = re.compile(r'G1-(\d+)')
 
 # =========================================================================
-# [탭 1] 씨수말(Sire) 관점 전수조사 실행 결과 출력
+# [탭 1] 씨수말(Sire) 관점 전수조사 실행 결과 출력 (Layer A 반영)
 # =========================================================================
 if "1." in view_mode:
-    st.subheader(f"1️⃣ 씨수말 [{sire_clean_name}] 관점 전수조사")
-    st.caption("※ 씨수말이 배출한 아들·딸을 전수 나열하고, 연결선(arrowlink)이 있는 경우 모마와 외조부마(BMS)를 추적합니다.")
+    st.subheader(f"1️⃣ 씨수말 [{sire_clean_name}] 관점 전수조사 (Layer A: 직계 자마 & 외조부마 매칭)")
+    st.caption("※ 씨수말이 직접 배출한 직계 자마와 결합된 외조부마(BMS) 간의 닉 효율 및 Sire-Maker 결합 패턴을 분석합니다.")
     
     sire_data = analyze_sire_perspective(root_node, search_sire, id_to_text, id_to_parent_text)
     
@@ -321,6 +324,16 @@ if "1." in view_mode:
             <b>현재 표시 자마 수:</b> {len(filtered_data)}두 | 
             <b>중복 매칭된 외조부마(Nick BMS, 2두 이상):</b> <span style='color:#0055CC; font-weight:bold;'>{len(nick_bms)}두</span> | 
             <b>단독 출현 외조부마(1두):</b> <span style='color:#0077CC; font-weight:bold;'>{len(single_bms)}두</span>
+        </div>
+        """, unsafe_allow_html=True)
+        
+        # Layer A 실전 가이드 요약 박스 추가
+        st.markdown(f"""
+        <div class='layer-a-box'>
+            <b>📌 Layer A (Sire 직계 자마 축) 분석 포인트:</b><br>
+            - <b>Sir Ivor 등 중복 매칭 닉:</b> 연속적인 G급 경주마 생산 및 모계 활성화를 유발하는 핵심 닉 조합[cite: 1]<br>
+            - <b>Buckpasser / War Admiral 등 단독 출현:</b> 단순 자마 생산을 넘어 <em>씨수말 자체를 만들어내는(Sire-Making)</em> 핵심 결합 구조[cite: 1, 2]<br>
+            - <b>휴면 자마(Foolish One, Moonmadness 등):</b> 직계 세대 전적이 평범하더라도 추후 모계 확장(Layer B/C)에서 폭발하는 시드 데이터[cite: 1, 2, 4]
         </div>
         """, unsafe_allow_html=True)
         
@@ -362,7 +375,7 @@ if "1." in view_mode:
 
         if single_bms:
             st.markdown("---")
-            st.markdown("### 📌 단독 출현 외조부마 (1두) 목록")
+            st.markdown("### 📌 단독 출현 외조부마 (1두) 목록 (Sire-Maker & 특수 리스크 매칭)")
             for bms_name in single_bms:
                 items = bms_grouped_items[bms_name]
                 blue_progenies_single = []
@@ -385,7 +398,7 @@ if "1." in view_mode:
                         st.markdown(f"&nbsp;&nbsp;&nbsp;&nbsp;↳ <span class='highlight-elite-daughter'>{child_name}</span> --- 🔗 (모마: {dam_display})", unsafe_allow_html=True)
 
         st.markdown("---")
-        st.markdown("### 📋 전체 자마 리스트 및 외조부마 매칭")
+        st.markdown("### 📋 전체 자마 리스트 및 외조부마 매칭 (Layer A 원본 데이터)")
         for idx, item in enumerate(filtered_data, 1):
             bms_display = clean_name_symbols(item['bms']) if item['bms'] and item['bms'] != "미상" else "미상"
             dam_display = clean_name_symbols(item['dam']) if item['dam'] and item['dam'] != "미상" else "미상"
@@ -426,7 +439,7 @@ if "1." in view_mode:
 # [탭 2] 외조부마(BMS) 관점 분석 실행 결과 출력
 # =========================================================================
 else:
-    st.subheader(f"2️⃣ 외조부마(BMS) [{sire_clean_name}] 관점 분석")
+    st.subheader(f"2️⃣ 외조부마(BMS) [{sire_clean_name}] 관점 분석 (Layer B: 모계 확장 축)")
     st.caption(f"※ 해당 씨수말의 직계 딸('암)' 표기)들이 배출한 자마 및 교배 부마(Father)의 닉(Nick) 조합을 분석합니다.")
     
     bms_data = analyze_bms_perspective(root_node, search_sire, id_to_text, id_to_parent_text)
@@ -465,7 +478,6 @@ else:
         </div>
         """, unsafe_allow_html=True)
 
-        # 1. 2두 이상 중복 교배 부마(Nick) 범례 및 파란색 자마 목록
         if nick_sires:
             st.markdown("🎨 **중복 교배 부마(Nick) 하이라이트 범례 및 파란색(특수) 자마 목록:**")
             for ns in nick_sires:
@@ -496,7 +508,6 @@ else:
                 else:
                     st.markdown(f"&nbsp;&nbsp;&nbsp;&nbsp;↳ <span style='color: #888; font-style: italic;'>조건을 만족하는 파란색 자마 없음</span>", unsafe_allow_html=True)
 
-        # 2. 단독 출현 씨수말 목록
         if single_sires:
             st.markdown("---")
             st.markdown("### 📌 단독 출현 씨수말 목록")
@@ -522,8 +533,6 @@ else:
                         st.markdown(f"&nbsp;&nbsp;&nbsp;&nbsp;↳ {sire_clean_name} 직계딸: {daughter_name} --- <span class='highlight-elite-daughter'>{child_name}</span>", unsafe_allow_html=True)
 
         st.markdown("---")
-
-        # 3. 직계딸별 상세 리스트
         st.markdown("### 📋 직계 딸별 자마 및 교배 부마 매칭")
         for idx, item in enumerate(bms_data, 1):
             daughter_name = item['daughter']
@@ -563,5 +572,3 @@ else:
                     father_display = f"<b>{father_name}</b>"
                     
                 st.markdown(f"<div class='progeny-item'>🔗 [연결 자마] {child_display} (부마: {father_display})</div>", unsafe_allow_html=True)
-
-
