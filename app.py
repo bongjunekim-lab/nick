@@ -37,11 +37,11 @@ def is_valid_mare(name):
 # 1. 페이지 설정
 st.set_page_config(page_title="씨수말 & 외조부마(BMS) 통합 혈통 닉 분석기 (Fixed Edition)", layout="wide")
 
-# CSS 스타일 정의 (특수문자 및 G1-7 조건 스타일 포함)
+# CSS 스타일 정의 (진한 파란색 및 특수문자/G1-7 스타일 포함)
 st.markdown("""
     <style>
     .elite-mare {
-        color: #1A5276 !important;
+        color: #1B4F72 !important;
         font-weight: bold;
         font-size: 1.25em;
         margin-top: 15px;
@@ -54,7 +54,7 @@ st.markdown("""
         font-size: 1.05em;
     }
     .highlight-elite-daughter {
-        color: #2980B9 !important;
+        color: #1B4F72 !important;
         font-weight: 900 !important;
     }
     .highlight-dash-mare {
@@ -62,7 +62,7 @@ st.markdown("""
         color: #000000 !important;
     }
     .highlight-g1-son {
-        color: #2980B9 !important;
+        color: #1B4F72 !important;
         font-weight: 900 !important;
     }
     .star-daughter {
@@ -93,7 +93,7 @@ st.markdown("""
         border: 1px solid #BA4A00;
     }
     .tier-badge-s-plus {
-        background: linear-gradient(135deg, #5499C7, #2980B9);
+        background: linear-gradient(135deg, #5499C7, #1B4F72);
         color: #fff;
         padding: 2px 8px;
         border-radius: 10px;
@@ -128,12 +128,12 @@ st.markdown("""
     }
     .gauge-bar {
         height: 100%;
-        background: linear-gradient(90deg, #85C1E9, #5499C7);
+        background: linear-gradient(90deg, #85C1E9, #1B4F72);
         border-radius: 3px;
     }
     .summary-card-top {
         background: linear-gradient(135deg, #F2F4F4, #E5E7E9);
-        border: 2px solid #5499C7;
+        border: 2px solid #1B4F72;
         padding: 15px 20px;
         border-radius: 8px;
         text-align: center;
@@ -314,7 +314,7 @@ if "1." in view_mode:
     hide_unknown = st.sidebar.checkbox("미상 항목 숨기기 (연결선 단절 데이터 삭제)", value=False)
 
 st.sidebar.markdown("---")
-highlight_special_progeny = st.sidebar.checkbox("🎯 특수 자마 하이라이트 (암말 @,$,* & 수말 G1-7+ 파란색 강조)", value=True)
+highlight_special_progeny = st.sidebar.checkbox("🎯 특수 자마 하이라이트 (암말 @,$,* & 수말 G1-7+ 진한 파란색 강조)", value=True)
 
 if not search_sire.strip():
     st.info("👈 좌측 사이드바에 검색하고 싶은 씨수말 이름을 입력해 주세요.")
@@ -345,8 +345,8 @@ st.markdown(f"""
 <div class='summary-card-top'>
     <h3 style='margin: 0; color: #2E4053;'>🏆 [{sire_clean_name}] 최종 종합 브리딩 스코어보드</h3>
     <p style='font-size: 0.95em; margin: 5px 0 10px 0; color: #566573;'>씨수말 직계 기여도와 씨암말(외조부마) 모계 파급력을 전략적으로 합산한 최종 평가입니다.</p>
-    <hr style='border: 0.5px solid #85C1E9; width: 40%; margin: 8px auto;'>
-    <h4 style='margin: 5px 0; color: #2C3E50;'>✨ 종합 통합 점수: <span style='color: #2980B9;'>{total_comprehensive_score:.1f} 점</span></h4>
+    <hr style='border: 0.5px solid #1B4F72; width: 40%; margin: 8px auto;'>
+    <h4 style='margin: 5px 0; color: #2C3E50;'>✨ 종합 통합 점수: <span style='color: #1B4F72;'>{total_comprehensive_score:.1f} 점</span></h4>
     <p style='font-size: 0.9em; margin: 0; color: #5D6D7E;'>씨수말 누적 점수: <b>{total_sire_score:.1f}점</b> | 씨암말(외조부마) 누적 점수: <b>{total_bms_score:.1f}점</b></p>
 </div>
 """, unsafe_allow_html=True)
@@ -391,7 +391,7 @@ if "1." in view_mode:
             st.metric(label="🏛️ 씨암말(외조부마) 누적 스코어", value=f"{total_bms_score:.1f}점")
 
         bg_palette = ["#EBF5FB", "#E8F8F5", "#F4ECF7", "#EAFAF1", "#FDEBD0", "#FEF9E7", "#EAF2F8"]
-        border_palette = ["#2980B9", "#16A085", "#8E44AD", "#27AE60", "#D35400", "#F39C12", "#3498DB"]
+        border_palette = ["#1B4F72", "#16A085", "#8E44AD", "#27AE60", "#D35400", "#F39C12", "#2980B9"]
 
         nick_style_map = {}
         for idx, ns in enumerate(nick_bms):
@@ -401,8 +401,8 @@ if "1." in view_mode:
         <div class='info-box'>
             <b>전체 배출 자마 수:</b> {len(sire_data)}두 | 
             <b>현재 표시 자마 수:</b> {len(filtered_data)}두 | 
-            <b>중복 매칭된 외조부마(Nick BMS, 2두 이상):</b> <span style='color:#2980B9; font-weight:bold;'>{len(nick_bms)}두</span> | 
-            <b>단독 출현 외조부마(1두):</b> <span style='color:#2471A3; font-weight:bold;'>{len(single_bms)}두</span>
+            <b>중복 매칭된 외조부마(Nick BMS, 2두 이상):</b> <span style='color:#1B4F72; font-weight:bold;'>{len(nick_bms)}두</span> | 
+            <b>단독 출현 외조부마(1두):</b> <span style='color:#1B4F72; font-weight:bold;'>{len(single_bms)}두</span>
         </div>
         """, unsafe_allow_html=True)
         
@@ -530,7 +530,7 @@ else:
             st.metric(label="🧬 씨수말 누적 스코어", value=f"{total_sire_score:.1f}점")
 
         bg_palette = ["#EBF5FB", "#E8F8F5", "#F4ECF7", "#EAFAF1", "#FDEBD0", "#FEF9E7", "#EAF2F8"]
-        border_palette = ["#2980B9", "#16A085", "#8E44AD", "#27AE60", "#D35400", "#F39C12", "#3498DB"]
+        border_palette = ["#1B4F72", "#16A085", "#8E44AD", "#27AE60", "#D35400", "#F39C12", "#2980B9"]
 
         nick_style_map = {}
         for idx, ns in enumerate(nick_sires):
@@ -576,6 +576,7 @@ else:
                         else:
                             c_display = child_name
                             
+                        # 닉스 목록에서는 직계딸 유지
                         st.markdown(f"&nbsp;&nbsp;&nbsp;&nbsp;↳ {badge_h} {sire_clean_name} 직계딸: {daughter_name} --- {c_display} (가중 점수: <b>{score:.1f}점</b>)", unsafe_allow_html=True)
 
         st.markdown("---")
@@ -610,7 +611,8 @@ else:
             else:
                 mare_badge = "<span class='tier-badge-a'>✨ A Tier</span>"
 
-            st.markdown(f"<div class='elite-mare'>💎 [{idx}] {mare_badge} {sire_clean_name} 직계딸: {daughter_name} (연결 자마: {len(progeny_list)}두) — 모마 하이브리드 종합 평가: <b>{hybrid_mare_score:.1f}점</b></div>", unsafe_allow_html=True)
+            # 직계딸별 메인 타이틀에서는 "직계딸:" 문구 삭제
+            st.markdown(f"<div class='elite-mare'>💎 [{idx}] {mare_badge} {sire_clean_name}: {daughter_name} (연결 자마: {len(progeny_list)}두) — 모마 하이브리드 종합 평가: <b>{hybrid_mare_score:.1f}점</b></div>", unsafe_allow_html=True)
             
             for p in progeny_list:
                 child_name = p['child']
