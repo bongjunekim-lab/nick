@@ -372,7 +372,6 @@ if "1." in view_mode:
         total_progeny_count = len(sire_data)
         elite_count = sum(1 for item in sire_data if ('@' in item['progeny'] or '#' in item['progeny'] or '*' in item['progeny'] or bool(g1_pattern.search(item['progeny']))))
         
-        # 🚀 순위 연산 없이 즉시 계산되는 누적 스코어
         total_sire_score = sum(calculate_evaluation_score(item['progeny'])[0] for item in sire_data)
         
         bms_data_for_calc = analyze_bms_perspective(root_node, search_sire, id_to_text, id_to_parent_text)
@@ -480,7 +479,6 @@ if "1." in view_mode:
             st.markdown(f"<div class='progeny-item'>🐴 [{idx}] {badge_h} <b>{child_display}</b> {dam_str} {bms_style} (가중 점수: <b>{score:.1f}점</b>)</div>", unsafe_allow_html=True)
             st.markdown(f"<div style='margin-left: 25px;'><div class='gauge-container' style='width: 60%;'><div class='gauge-bar' style='width: {min(score/5, 100)}%;'></div></div></div>", unsafe_allow_html=True)
 
-        # 🚀 [최하단] 종합 브리딩 점수 카드 (순위 제외)
         total_comprehensive_score = total_sire_score + total_bms_score_calc
         st.markdown(f"""
         <div class='summary-card'>
@@ -520,7 +518,6 @@ else:
         nick_sires = [father for father, count in father_counts.items() if count >= 2 and father != "정보 없음"]
         single_sires = [father for father, count in father_counts.items() if count == 1 and father != "정보 없음"]
 
-        # 🚀 순위 연산 없이 즉시 계산되는 스코어
         total_bms_score = 0.0
         for item in bms_data:
             for p in item['progeny']:
@@ -627,11 +624,11 @@ else:
                 else:
                     father_display = f"<b>{father_name}</b>"
                     
+                # 🚀 [오류 수정 완료 부분] 변수 스코프 및 렌더링 정상화
                 score, badge_h = calculate_evaluation_score(child_name, is_elite_daughter=is_elite_daughter, is_high_g1=is_high_g1)
-                st.markdown(f"<div class='progeny-item'>🔗 [{badge_h}] [연결 자마] {child_display} (부마: {father_display}) — 가중 점수: <b>{score:.1f}점</b></div>", unsafe_allow_html=True)
+                st.markdown(f"<div class='progeny-item'>🔗 {badge_h} [연결 자마] {child_name} (부마: {father_display}) — 가중 점수: <b>{score:.1f}점</b></div>", unsafe_allow_html=True)
                 st.markdown(f"<div style='margin-left: 25px;'><div class='gauge-container' style='width: 60%;'><div class='gauge-bar' style='width: {min(score/5, 100)}%;'></div></div></div>", unsafe_allow_html=True)
 
-        # 🚀 [최하단] 종합 브리딩 점수 카드 (순위 제외)
         total_comprehensive_score = total_sire_score_calc + total_bms_score
         st.markdown(f"""
         <div class='summary-card'>
