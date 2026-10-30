@@ -171,7 +171,7 @@ def load_mindmap_data():
 g1_pattern = re.compile(r'G1\s*[:\-\.]?\s*(\d+)')
 
 def check_special_condition(text):
-    """암말 @, # 기호 보유 또는 수말 G1 우승 자마 두수 7두 이상 여부 체크"""
+    """암말 @, # 기호 보유 또는 수말 G1 우승 자마 두수 7두 이상 여부 체크 (1두 이상 엘리트 닉 조건)"""
     g1_match = g1_pattern.search(text)
     g1_wins = int(g1_match.group(1)) if g1_match else 0
     is_daughter = is_valid_mare(text)
@@ -386,6 +386,7 @@ if "1." in view_mode:
                 if check_special_condition(c_name):
                     bms_has_special_progeny[bms] = True
 
+        # ✅ [닉 기준 반영] 2두 이상 매칭(검증된 닉) 또는 1두 이상이더라도 특수 조건을 만족하는 핵심 외조부마(BMS) 타겟 설정
         target_bms_list = [bms for bms in bms_counts.keys() if bms != "미상" and (bms_counts[bms] >= 2 or bms_has_special_progeny[bms])]
         
         total_progeny_count = len(sire_data)
@@ -406,6 +407,13 @@ if "1." in view_mode:
         with col4:
             st.metric(label="🏛️ 씨암말(외조부마) 누적 스코어", value=f"{total_bms_score:.1f}점")
 
+        bg_palette = ["#EBF5FB", "#E8F8F5", "#F4ECF7", "#EAFAF1", "#FDEBD0", "#FEF9E7", "#EAF2F8"]
+        border_palette = ["#1B4F72", "#16A085", "#8E44AD", "#27AE60", "#D35400", "#F39C12", "#2980B9"]
+
+        nick_style_map = {}
+        for idx, ns in enumerate(target_bms_list):
+            nick_style_map[ns] = (border_palette[idx % len(border_palette)], bg_palette[idx % len(bg_palette)])
+
         st.markdown("---")
         st.markdown("### 📋 전체 자마 리스트 및 외조부마 매칭 (Layer A 원본 데이터)")
         for idx, item in enumerate(filtered_data, 1):
@@ -417,7 +425,7 @@ if "1." in view_mode:
             is_star = '*' in child_name
             is_daughter = is_valid_mare(child_name)
 
-            # ✅ [요청 반영] 특수기호 * 포함: 굵은 검은색 / 조건 만족: 굵은 진한 파란색 / 일반: 가늘고 평범하게
+            # 텍스트 스타일 적용
             if is_star:
                 child_display = f"<span class='highlight-special-star'>{child_name}</span>"
             elif is_special:
@@ -426,7 +434,13 @@ if "1." in view_mode:
                 child_display = f"<span style='font-weight:normal; color:#2C3E50;'>{child_name}</span>"
 
             dam_str = f"--- 🔗 (모마: {dam_display})"
-            bms_style = f"| <span style='font-weight:normal; color:#555;'>[외조부마: {bms_display}]</span>"
+            
+            # ✅ [닉 색상 복원] 외조부마에 고유 색상 백그라운드 박스 적용
+            if item['bms'] in nick_style_map:
+                b_c, bg_c = nick_style_map[item['bms']]
+                bms_style = f"| <span style='color:{b_c}; background-color:{bg_c}; font-weight:bold; padding:2px 6px; border-radius:4px; border:1px solid {b_c}80;'>[외조부마: {bms_display}]</span>"
+            else:
+                bms_style = f"| <span style='font-weight:normal; color:#555;'>[외조부마: {bms_display}]</span>"
                 
             score, badge_h = calculate_evaluation_score(child_name, is_elite_daughter=(is_daughter and is_special), is_high_g1=(not is_daughter and is_special))
             st.markdown(f"<div class='progeny-item'>🐴 [{idx}] {badge_h} <b>{child_display}</b> {dam_str} {bms_style} (가중 점수: <b>{score:.1f}점</b>)</div>", unsafe_allow_html=True)
@@ -444,6 +458,19 @@ else:
     if not bms_data:
         st.warning(f"'{search_sire}'의 조건('암)' 표기 + 연결된 자마 보유)을 만족하는 직계 딸 데이터가 없습니다.")
     else:
+        father_counts = defaultdict(int)
+        father_has_special_progeny = defaultdict(bool)
+        
+        for item in bms_data:
+            for p in item['progeny']:
+                f_name = p['father']
+                father_counts[f_name] += 1
+                if check_special_condition(p['child']):
+                    father_has_special_progeny[f_name] = True
+
+        # ✅ [닉 기준 반영] 2두 이상 매칭(검증된 닉) 또는 1두 이상이더라도 특수 조건을 만족하는 교배 부마 타겟 설정
+        target_sires = [father for father in father_counts.keys() if father != "정보 없음" and (father_counts[father] >= 2 or father_has_special_progeny[father])]
+
         col1, col2, col3, col4 = st.columns(4)
         with col1:
             st.metric(label="💎 조건 충족 직계딸(종빈마)", value=f"{len(bms_data)}두")
@@ -453,6 +480,13 @@ else:
             st.metric(label="🏛️ 씨암말(외조부마) 누적 스코어", value=f"{total_bms_score:.1f}점")
         with col4:
             st.metric(label="🧬 씨수말 누적 스코어", value=f"{total_sire_score:.1f}점")
+
+        bg_palette = ["#EBF5FB", "#E8F8F5", "#F4ECF7", "#EAFAF1", "#FDEBD0", "#FEF9E7", "#EAF2F8"]
+        border_palette = ["#1B4F72", "#16A085", "#8E44AD", "#27AE60", "#D35400", "#F39C12", "#2980B9"]
+
+        nick_style_map = {}
+        for idx, ns in enumerate(target_sires):
+            nick_style_map[ns] = (border_palette[idx % len(border_palette)], bg_palette[idx % len(bg_palette)])
 
         st.markdown("---")
         st.markdown("### 📋 직계 딸별 자마 및 교배 부마 매칭")
@@ -497,11 +531,15 @@ else:
                 is_star = '*' in child_name
                 is_daughter = is_valid_mare(child_name)
 
-                father_display = f"<span style='font-weight:normal; color:#555;'>{father_name}</span>"
+                # ✅ [닉 색상 복원] 교배 부마에 고유 색상 박스 적용
+                if father_name in nick_style_map:
+                    b_c, bg_c = nick_style_map[father_name]
+                    father_display = f"<span style='color:{b_c}; background-color:{bg_c}; font-weight:bold; padding:2px 8px; border-radius:4px; border:1px solid {b_c}80;'>{father_name}</span>"
+                else:
+                    father_display = f"<span style='font-weight:normal; color:#555;'>{father_name}</span>"
                     
                 score, badge_h = calculate_evaluation_score(child_name, is_elite_daughter=(is_daughter and is_special), is_high_g1=(not is_daughter and is_special))
                 
-                # ✅ [요청 반영] 특수기호 * 포함: 굵은 검은색 / 조건 만족: 굵은 진한 파란색 / 일반: 가늘고 평범하게
                 if is_star:
                     child_display = f"<span class='highlight-special-star'>{child_name}</span>"
                 elif is_special:
