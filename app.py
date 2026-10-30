@@ -11,7 +11,7 @@ def clean_name_symbols(text):
 
 def normalize_name(text):
     """이름 정제 및 비교용 표준화"""
-    clean = text.replace('@', '').replace('#', '').replace('*', '')
+    clean = text.replace('@', '').replace('#', '').replace('*', '').replace('$', '')
     clean = clean.replace('＠', '').replace('＃', '')
     clean = clean.replace('암)', '').replace('수)', '').replace('거)', '')
     clean = clean.replace('가.', '').replace('나.', '').replace('다.', '')
@@ -37,7 +37,7 @@ def is_valid_mare(name):
 # 1. 페이지 설정
 st.set_page_config(page_title="씨수말 & 외조부마(BMS) 통합 혈통 닉 분석기 (Fixed Edition)", layout="wide")
 
-# CSS 스타일 정의 (눈부심 방지 게이지 바 및 닉 배지 스타일)
+# CSS 스타일 정의 (특수문자 및 G1-7 조건 스타일 포함)
 st.markdown("""
     <style>
     .elite-mare {
@@ -53,16 +53,16 @@ st.markdown("""
         color: #2C3E50;
         font-size: 1.05em;
     }
-    .premium-progeny {
-        color: #2980B9 !important;
-        font-weight: bold;
-    }
     .highlight-elite-daughter {
-        color: #1B4F72 !important;
+        color: #2980B9 !important;
         font-weight: 900 !important;
     }
+    .highlight-dash-mare {
+        font-weight: bold !important;
+        color: #000000 !important;
+    }
     .highlight-g1-son {
-        color: #1B4F72 !important;
+        color: #2980B9 !important;
         font-weight: 900 !important;
     }
     .star-daughter {
@@ -314,7 +314,7 @@ if "1." in view_mode:
     hide_unknown = st.sidebar.checkbox("미상 항목 숨기기 (연결선 단절 데이터 삭제)", value=False)
 
 st.sidebar.markdown("---")
-highlight_special_progeny = st.sidebar.checkbox("🎯 특수 자마 하이라이트 (암말 @,#,* & 수말 G1-7+ 파란색 강조)", value=True)
+highlight_special_progeny = st.sidebar.checkbox("🎯 특수 자마 하이라이트 (암말 @,$,* & 수말 G1-7+ 파란색 강조)", value=True)
 
 if not search_sire.strip():
     st.info("👈 좌측 사이드바에 검색하고 싶은 씨수말 이름을 입력해 주세요.")
@@ -332,7 +332,7 @@ total_bms_score = 0.0
 for item in bms_data_for_calc:
     for p in item['progeny']:
         c_name = p['child']
-        is_ed = ('@' in c_name or '#' in c_name or '*' in c_name) and ('암' in c_name or '암)' in c_name)
+        is_ed = is_valid_mare(c_name) and any(sym in c_name for sym in ['@', '$', '*'])
         g_match = g1_pattern.search(c_name)
         is_hg1 = bool(g_match and int(g_match.group(1)) >= 7)
         s, _ = calculate_evaluation_score(c_name, is_elite_daughter=is_ed, is_high_g1=is_hg1)
@@ -378,7 +378,7 @@ if "1." in view_mode:
         single_bms = [bms for bms, cnt in bms_counts.items() if cnt == 1 and bms != "미상"]
         
         total_progeny_count = len(sire_data)
-        elite_count = sum(1 for item in sire_data if ('@' in item['progeny'] or '#' in item['progeny'] or '*' in item['progeny'] or bool(g1_pattern.search(item['progeny']))))
+        elite_count = sum(1 for item in sire_data if (any(sym in item['progeny'] for sym in ['@', '#', '*', '$']) or bool(g1_pattern.search(item['progeny']))))
 
         col1, col2, col3, col4 = st.columns(4)
         with col1:
@@ -412,9 +412,8 @@ if "1." in view_mode:
             if bms_full and bms_full != "미상":
                 bms_grouped_items[bms_full].append(item)
 
-        # 🎨 씨수말 관점 상단 외조부마(Nick BMS) 범례 및 자마 목록 출력
         if nick_bms:
-            st.markdown("🎨 **주요 외조부마(Nick BMS, 2두 이상) 범례 및 파란색(특수) 자마 목록:**")
+            st.markdown("🎨 **주요 외조부마(Nick BMS, 2두 이상) 범례 및 특수 자마 목록:**")
             for bms_name in nick_bms:
                 b_c, bg_c = nick_style_map[bms_name]
                 cnt = bms_counts[bms_name]
@@ -422,25 +421,40 @@ if "1." in view_mode:
                 st.markdown(badge_html, unsafe_allow_html=True)
                 
                 items = bms_grouped_items[bms_name]
-                blue_progenies = []
+                special_progenies = []
                 for item in items:
                     child_name = item['progeny']
                     g1_match = g1_pattern.search(child_name)
                     is_high_g1 = bool(g1_match and int(g1_match.group(1)) >= 7)
-                    is_daughter = '암' in child_name or '암)' in child_name
-                    is_elite_daughter = ('@' in child_name or '#' in child_name or '＠' in child_name or '＃' in child_name or '*' in child_name) and is_daughter
+                    is_daughter = is_valid_mare(child_name)
+                    is_elite_daughter = is_daughter and any(sym in child_name for sym in ['@', '#', '＠', '＃', '*', '$'])
                     is_high_g1_son = is_high_g1 and not is_daughter
-                    if is_elite_daughter or is_high_g1_son:
-                        blue_progenies.append(item)
+                    if is_elite_daughter or is_high_g1_son or '-' in child_name:
+                        special_progenies.append(item)
                 
-                if blue_progenies:
-                    for item in blue_progenies:
+                if special_progenies:
+                    for item in special_progenies:
                         dam_display = clean_name_symbols(item['dam']) if item['dam'] and item['dam'] != "미상" else "미상"
                         child_name = item['progeny']
-                        score, badge_h = calculate_evaluation_score(child_name, is_elite_daughter=True)
-                        st.markdown(f"&nbsp;&nbsp;&nbsp;&nbsp;↳ {badge_h} <span class='highlight-elite-daughter'>{child_name}</span> --- 🔗 (모마: {dam_display}) [가중 점수: <b>{score:.1f}점</b>]", unsafe_allow_html=True)
+                        is_daughter = is_valid_mare(child_name)
+                        is_elite_daughter = is_daughter and any(sym in child_name for sym in ['@', '#', '＠', '＃', '*', '$'])
+                        g1_match = g1_pattern.search(child_name)
+                        is_high_g1 = bool(g1_match and int(g1_match.group(1)) >= 7)
+                        
+                        score, badge_h = calculate_evaluation_score(child_name, is_elite_daughter=is_elite_daughter, is_high_g1=is_high_g1)
+                        
+                        if is_daughter and any(sym in child_name for sym in ['@', '#', '＠', '＃', '*', '$']):
+                            c_display = f"<span class='highlight-elite-daughter'>{child_name}</span>"
+                        elif '-' in child_name and is_daughter:
+                            c_display = f"<span class='highlight-dash-mare'>{child_name}</span>"
+                        elif is_high_g1:
+                            c_display = f"<span class='highlight-g1-son'>{child_name}</span>"
+                        else:
+                            c_display = child_name
+                            
+                        st.markdown(f"&nbsp;&nbsp;&nbsp;&nbsp;↳ {badge_h} {c_display} --- 🔗 (모마: {dam_display}) [가중 점수: <b>{score:.1f}점</b>]", unsafe_allow_html=True)
                 else:
-                    st.markdown(f"&nbsp;&nbsp;&nbsp;&nbsp;↳ <span style='color: #888; font-style: italic;'>조건을 만족하는 파란색 자마 없음</span>", unsafe_allow_html=True)
+                    st.markdown(f"&nbsp;&nbsp;&nbsp;&nbsp;↳ <span style='color: #888; font-style: italic;'>조건을 만족하는 특수 자마 없음</span>", unsafe_allow_html=True)
 
         st.markdown("---")
         st.markdown("### 📋 전체 자마 리스트 및 외조부마 매칭 (Layer A 원본 데이터)")
@@ -450,15 +464,16 @@ if "1." in view_mode:
             child_name = item['progeny']
             g1_match = g1_pattern.search(child_name)
             is_high_g1 = bool(g1_match and int(g1_match.group(1)) >= 7)
-            is_daughter = '암' in child_name or '암)' in child_name
-            is_elite_daughter = ('@' in child_name or '#' in child_name or '＠' in child_name or '＃' in child_name or '*' in child_name) and is_daughter
-            is_high_g1_son = is_high_g1 and not is_daughter
+            is_daughter = is_valid_mare(child_name)
+            is_elite_daughter = is_daughter and any(sym in child_name for sym in ['@', '#', '＠', '＃', '*', '$'])
 
             if highlight_special_progeny:
-                if is_high_g1_son:
+                if is_high_g1:
                     child_display = f"<span class='highlight-g1-son'>{child_name}</span>"
                 elif is_elite_daughter:
                     child_display = f"<span class='highlight-elite-daughter'>{child_name}</span>"
+                elif '-' in child_name and is_daughter:
+                    child_display = f"<span class='highlight-dash-mare'>{child_name}</span>"
                 else:
                     child_display = child_name
             else:
@@ -466,7 +481,6 @@ if "1." in view_mode:
 
             dam_str = f"--- 🔗 (모마: {dam_display})"
             
-            # 🚀 [핵심 수정] 씨수말 관점 리스트 각 항목에 외조부마 닉(BMS Style) 색상 및 배지 적용
             if item['bms'] in nick_style_map:
                 b_c, bg_c = nick_style_map[item['bms']]
                 bms_style = f"| <span style='color:{b_c}; background-color:{bg_c}; font-weight:bold; padding:2px 6px; border-radius:4px; border:1px solid {b_c}80;'>[외조부마: {bms_display}]</span>"
@@ -523,7 +537,7 @@ else:
             nick_style_map[ns] = (border_palette[idx % len(border_palette)], bg_palette[idx % len(bg_palette)])
 
         if nick_sires:
-            st.markdown("🎨 **중복 교배 부마(Nick) 하이라이트 범례 및 파란색(특수) 자마 목록:**")
+            st.markdown("🎨 **중복 교배 부마(Nick) 하이라이트 범례 및 특수 자마 목록:**")
             for ns in nick_sires:
                 b_c, bg_c = nick_style_map[ns]
                 cnt = father_counts[ns]
@@ -531,23 +545,38 @@ else:
                 st.markdown(badge_html, unsafe_allow_html=True)
                 
                 progenies = father_grouped_progenies[ns]
-                blue_progenies = []
+                special_progenies = []
                 for p in progenies:
                     child_name = p['child']
                     g1_match = g1_pattern.search(child_name)
                     is_high_g1 = bool(g1_match and int(g1_match.group(1)) >= 7)
-                    is_daughter = '암' in child_name or '암)' in child_name
-                    is_elite_daughter = ('@' in child_name or '#' in child_name or '＠' in child_name or '＃' in child_name or '*' in child_name) and is_daughter
+                    is_daughter = is_valid_mare(child_name)
+                    is_elite_daughter = is_daughter and any(sym in child_name for sym in ['@', '#', '＠', '＃', '*', '$'])
                     is_high_g1_son = is_high_g1 and not is_daughter
-                    if is_elite_daughter or is_high_g1_son:
-                        blue_progenies.append(p)
+                    if is_elite_daughter or is_high_g1_son or '-' in child_name:
+                        special_progenies.append(p)
                 
-                if blue_progenies:
-                    for p in blue_progenies:
+                if special_progenies:
+                    for p in special_progenies:
                         daughter_name = p['daughter']
                         child_name = p['child']
-                        score, badge_h = calculate_evaluation_score(child_name, is_elite_daughter=True)
-                        st.markdown(f"&nbsp;&nbsp;&nbsp;&nbsp;↳ {badge_h} {sire_clean_name} 직계딸: {daughter_name} --- <span class='highlight-elite-daughter'>{child_name}</span> (가중 점수: <b>{score:.1f}점</b>)", unsafe_allow_html=True)
+                        is_daughter = is_valid_mare(child_name)
+                        is_elite_daughter = is_daughter and any(sym in child_name for sym in ['@', '#', '＠', '＃', '*', '$'])
+                        g1_match = g1_pattern.search(child_name)
+                        is_high_g1 = bool(g1_match and int(g1_match.group(1)) >= 7)
+                        
+                        score, badge_h = calculate_evaluation_score(child_name, is_elite_daughter=is_elite_daughter)
+                        
+                        if is_daughter and any(sym in child_name for sym in ['@', '#', '＠', '＃', '*', '$']):
+                            c_display = f"<span class='highlight-elite-daughter'>{child_name}</span>"
+                        elif '-' in child_name and is_daughter:
+                            c_display = f"<span class='highlight-dash-mare'>{child_name}</span>"
+                        elif is_high_g1:
+                            c_display = f"<span class='highlight-g1-son'>{child_name}</span>"
+                        else:
+                            c_display = child_name
+                            
+                        st.markdown(f"&nbsp;&nbsp;&nbsp;&nbsp;↳ {badge_h} {sire_clean_name} 직계딸: {daughter_name} --- {c_display} (가중 점수: <b>{score:.1f}점</b>)", unsafe_allow_html=True)
 
         st.markdown("---")
         st.markdown("### 📋 직계 딸별 자마 및 교배 부마 매칭")
@@ -558,7 +587,7 @@ else:
             mare_scores = []
             for p in progeny_list:
                 c_name = p['child']
-                is_ed = ('@' in c_name or '#' in c_name or '*' in c_name) and ('암' in c_name or '암)' in c_name)
+                is_ed = is_valid_mare(c_name) and any(sym in c_name for sym in ['@', '$', '*'])
                 g_match = g1_pattern.search(c_name)
                 is_hg1 = bool(g_match and int(g_match.group(1)) >= 7)
                 s, _ = calculate_evaluation_score(c_name, is_elite_daughter=is_ed, is_high_g1=is_hg1)
@@ -588,8 +617,8 @@ else:
                 father_name = p['father']
                 g1_match = g1_pattern.search(child_name)
                 is_high_g1 = bool(g1_match and int(g1_match.group(1)) >= 7)
-                is_daughter = '암' in child_name or '암)' in child_name
-                is_elite_daughter = ('@' in child_name or '#' in child_name or '＠' in child_name or '＃' in child_name or '*' in child_name) and is_daughter
+                is_daughter = is_valid_mare(child_name)
+                is_elite_daughter = is_daughter and any(sym in child_name for sym in ['@', '#', '＠', '＃', '*', '$'])
                 is_high_g1_son = is_high_g1 and not is_daughter
 
                 if father_name in nick_style_map:
@@ -599,5 +628,15 @@ else:
                     father_display = f"<b>{father_name}</b>"
                     
                 score, badge_h = calculate_evaluation_score(child_name, is_elite_daughter=is_elite_daughter, is_high_g1=is_high_g1)
-                st.markdown(f"<div class='progeny-item'>🔗 {badge_h} [연결 자마] {child_name} (부마: {father_display}) — 가중 점수: <b>{score:.1f}점</b></div>", unsafe_allow_html=True)
+                
+                if is_high_g1:
+                    child_display = f"<span class='highlight-g1-son'>{child_name}</span>"
+                elif is_elite_daughter:
+                    child_display = f"<span class='highlight-elite-daughter'>{child_name}</span>"
+                elif '-' in child_name and is_daughter:
+                    child_display = f"<span class='highlight-dash-mare'>{child_name}</span>"
+                else:
+                    child_display = child_name
+
+                st.markdown(f"<div class='progeny-item'>🔗 {badge_h} [연결 자마] {child_display} (부마: {father_display}) — 가중 점수: <b>{score:.1f}점</b></div>", unsafe_allow_html=True)
                 st.markdown(f"<div style='margin-left: 25px;'><div class='gauge-container'><div class='gauge-bar' style='width: {min(score/5, 100)}%;'></div></div></div>", unsafe_allow_html=True) 
