@@ -170,9 +170,12 @@ def load_mindmap_data():
     except Exception as e:
         return None, None, None, None, f"파일 분석 오류: {str(e)}"
 
+# ✅ [초고도화된 파생 G1 파싱 패턴] 하이픈, 공백, 콜론, 점 등 다양한 형태의 구분자와 숫자를 유연하게 수용
+g1_pattern = re.compile(r'G1\s*[:\-\.]?\s*(\d+)')
+
 def calculate_evaluation_score(text, is_elite_daughter=False, is_high_g1=False):
     score = 30.0
-    g1_match = re.search(r'G1-(\d+)', text)
+    g1_match = g1_pattern.search(text)
     g1_wins = int(g1_match.group(1)) if g1_match else 0
     
     score += g1_wins * 10.0
@@ -319,7 +322,6 @@ if not search_sire.strip():
     st.stop()
 
 sire_clean_name = clean_name_symbols(search_sire)
-g1_pattern = re.compile(r'G1-(\d+)')
 
 # 사전 점수 집계 (상단 스코어보드 공용)
 sire_data_for_calc = analyze_sire_perspective(root_node, search_sire, id_to_text, id_to_parent_text)
@@ -379,11 +381,10 @@ if "1." in view_mode:
                 g_match = g1_pattern.search(c_name)
                 g_wins = int(g_match.group(1)) if g_match else 0
                 is_dau = is_valid_mare(c_name)
-                # ✅ [조건 반영] 1. 암말 @, #, * 기호 보유 OR 2. 수말 G1-7두 이상 배출
+                # ✅ [조건 반영] 1. 암말 @, #, * 기호 보유 OR 2. 수말 G1 우승 자마 두수 7두 이상 배출
                 if (is_dau and any(sym in c_name for sym in ['@', '#', '*'])) or (not is_dau and g_wins >= 7):
                     bms_has_special_progeny[bms] = True
 
-        # ✅ 닉(2두 이상)이 아니더라도, 특수 자마를 1두라도 보유했다면 무조건 타겟에 포함!
         target_bms_list = [bms for bms in bms_counts.keys() if bms != "미상" and (bms_counts[bms] >= 2 or bms_has_special_progeny[bms])]
         
         total_progeny_count = len(sire_data)
@@ -503,7 +504,7 @@ if "1." in view_mode:
             
             if item['bms'] in nick_style_map:
                 b_c, bg_c = nick_style_map[item['bms']]
-                bms_style = f"| <span style='color:{b_c}; background-color:{bg_c}; font-weight:bold; padding:2px 6px; border-radius:4px; border:1px solid {b_c}80;>[외조부마: {bms_display}]</span>"
+                bms_style = f"| <span style='color:{b_c}; background-color:{bg_c}; font-weight:bold; padding:2px 6px; border-radius:4px; border:1px solid {b_c}80;'>[외조부마: {bms_display}]</span>"
             else:
                 bms_style = f"| [외조부마: {bms_display}]"
                 
@@ -619,7 +620,7 @@ else:
                 c_name = p['child']
                 is_ed = is_valid_mare(c_name) and any(sym in c_name for sym in ['@', '#', '*'])
                 g_match = g1_pattern.search(c_name)
-                g1_wins = int(g_match.group(1)) if g_match else 0
+                g1_wins = int(g_match.group(1)) if g1_match else 0
                 is_hg1 = (not is_valid_mare(c_name)) and (g1_wins >= 7)
                 s, _ = calculate_evaluation_score(c_name, is_elite_daughter=is_ed, is_high_g1=is_hg1)
                 mare_scores.append(s)
@@ -671,4 +672,4 @@ else:
                     child_display = child_name
 
                 st.markdown(f"<div class='progeny-item'>🔗 {badge_h} [연결 자마] {child_display} (부마: {father_display}) — 가중 점수: <b>{score:.1f}점</b></div>", unsafe_allow_html=True)
-                st.markdown(f"<div style='margin-left: 25px;'><div class='gauge-container'><div class='gauge-bar' style='width: {min(score/5, 100)}%;'></div></div></div>", unsafe_allow_html=True) 
+                st.markdown(f"<div style='margin-left: 25px;'><div class='gauge-container'><div class='gauge-bar' style='width: {min(score/5, 100)}%;'></div></div></div>", unsafe_allow_html=True)
