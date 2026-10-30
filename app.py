@@ -167,7 +167,8 @@ def load_mindmap_data():
     except Exception as e:
         return None, None, None, None, f"파일 분석 오류: {str(e)}"
 
-g1_pattern = re.compile(r'G1\s*[:\-\.]?\s*(\d+)')
+# ✅ G1 뒤에 콤마(,), 점(.), 하이픈(-), 콜론(:), 공백 등 어떤 기호가 섞여 있든 숫자를 정확히 추출하는 정규식
+g1_pattern = re.compile(r'G1[^\d]*(\d+)')
 
 def check_special_condition(text):
     """암말 @, # 기호 보유 또는 수말 G1 우승 자마 두수 7두 이상 여부 체크"""
@@ -183,7 +184,7 @@ def check_special_condition(text):
 def calculate_evaluation_score(text, is_elite_daughter=False, is_high_g1=False):
     score = 30.0
     
-    # ✅ 수정됨: 텍스트 내 모든 G1 매칭 값을 찾아 가장 큰 값(진짜 G1 우승/배출 수 지표)을 채택
+    # 텍스트 내 모든 G1 매칭 값을 찾아 가장 큰 값(진짜 G1 우승/배출 수 지표)을 채택
     g1_matches = g1_pattern.findall(text)
     g1_wins = max([int(x) for x in g1_matches]) if g1_matches else 0
     
