@@ -486,7 +486,7 @@ if "1." in view_mode:
 
             dam_str = f"--- 🔗 (모마: {dam_display})"
             
-            # 🚀 [복구 완료] 탭 1 리스트 항목에 외조부마 닉(BMS Style) 적용
+            # 🚀 [완벽 복구 완료] 탭 1 리스트 항목에 외조부마 닉(BMS Style) 색상 및 배지 적용
             if item['bms'] in nick_style_map:
                 b_c, bg_c = nick_style_map[item['bms']]
                 bms_style = f"| <span style='color:{b_c}; background-color:{bg_c}; font-weight:bold; padding:2px 6px; border-radius:4px; border:1px solid {b_c}80;'>[외조부마: {bms_display}]</span>"
