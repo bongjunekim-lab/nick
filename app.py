@@ -19,6 +19,11 @@ def normalize_name(text):
     return clean.strip().lower()
 
 def is_valid_mare(name):
+    """
+    [안전하고 유연한 암말 검증 원칙]
+    - 마명 내에 '암' 글자가 포함되어 있으면 암말(직계딸)로 인정합니다.
+    - 단, 명백한 수말(수) 표기가 단독으로 강조된 경우는 제외합니다.
+    """
     if not name:
         return False
     if '수)' in name and '암' not in name:
@@ -30,7 +35,7 @@ def is_valid_mare(name):
     return True
 
 # 1. 페이지 설정
-st.set_page_config(page_title="씨수말 & 외조부마(BMS) 통합 혈통 닉 분석기", layout="wide")
+st.set_page_config(page_title="씨수말 & 외조부마(BMS) 통합 혈통 닉 분석기 (Fixed Edition)", layout="wide")
 
 # CSS 스타일 정의 (눈부심 방지 게이지 바 및 닉 배지 스타일)
 st.markdown("""
@@ -48,12 +53,20 @@ st.markdown("""
         color: #2C3E50;
         font-size: 1.05em;
     }
+    .premium-progeny {
+        color: #2980B9 !important;
+        font-weight: bold;
+    }
     .highlight-elite-daughter {
         color: #1B4F72 !important;
         font-weight: 900 !important;
     }
     .highlight-g1-son {
         color: #1B4F72 !important;
+        font-weight: 900 !important;
+    }
+    .star-daughter {
+        color: #2C3E50 !important;
         font-weight: 900 !important;
     }
     .legend-badge {
@@ -399,7 +412,7 @@ if "1." in view_mode:
             if bms_full and bms_full != "미상":
                 bms_grouped_items[bms_full].append(item)
 
-        # 씨수말 관점 상단 외조부마(Nick BMS) 범례 및 자마 목록 출력
+        # 🎨 씨수말 관점 상단 외조부마(Nick BMS) 범례 및 자마 목록 출력
         if nick_bms:
             st.markdown("🎨 **주요 외조부마(Nick BMS, 2두 이상) 범례 및 파란색(특수) 자마 목록:**")
             for bms_name in nick_bms:
@@ -453,15 +466,9 @@ if "1." in view_mode:
 
             dam_str = f"--- 🔗 (모마: {dam_display})"
             
-            # 🚀 [완벽 수정 완료] 탭 1 리스트 항목에 외조부마 닉(BMS Style) 색상 및 배지 강제 적용
-            matched_bms_key = None
-            for ns in nick_style_map.keys():
-                if normalize_name(ns) == normalize_name(item['bms']):
-                    matched_bms_key = ns
-                    break
-
-            if matched_bms_key:
-                b_c, bg_c = nick_style_map[matched_bms_key]
+            # 🚀 [핵심 수정] 씨수말 관점 리스트 각 항목에 외조부마 닉(BMS Style) 색상 및 배지 적용
+            if item['bms'] in nick_style_map:
+                b_c, bg_c = nick_style_map[item['bms']]
                 bms_style = f"| <span style='color:{b_c}; background-color:{bg_c}; font-weight:bold; padding:2px 6px; border-radius:4px; border:1px solid {b_c}80;'>[외조부마: {bms_display}]</span>"
             else:
                 bms_style = f"| [외조부마: {bms_display}]"
@@ -585,15 +592,8 @@ else:
                 is_elite_daughter = ('@' in child_name or '#' in child_name or '＠' in child_name or '＃' in child_name or '*' in child_name) and is_daughter
                 is_high_g1_son = is_high_g1 and not is_daughter
 
-                # 외조부마 관점 교배 부마 닉 매칭 안전장치 적용
-                matched_father_key = None
-                for ns in nick_style_map.keys():
-                    if normalize_name(ns) == normalize_name(father_name):
-                        matched_father_key = ns
-                        break
-
-                if matched_father_key:
-                    b_c, bg_c = nick_style_map[matched_father_key]
+                if father_name in nick_style_map:
+                    b_c, bg_c = nick_style_map[father_name]
                     father_display = f"<span style='color:{b_c}; background-color:{bg_c}; font-weight:bold; padding:2px 8px; border-radius:4px; border:1px solid {b_c}80;'>{father_name}</span>"
                 else:
                     father_display = f"<b>{father_name}</b>"
