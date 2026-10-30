@@ -35,13 +35,13 @@ def is_valid_mare(name):
     return True
 
 # 1. 페이지 설정
-st.set_page_config(page_title="씨수말 & 외조부마(BMS) 통합 혈통 닉 분석기 (Fast Score Edition)", layout="wide")
+st.set_page_config(page_title="씨수말 & 외조부마(BMS) 통합 혈통 닉 분석기 (Comfortable Gauge Edition)", layout="wide")
 
-# CSS 스타일 정의
+# CSS 스타일 정의 (눈이 편안한 게이지 바 색상 적용)
 st.markdown("""
     <style>
     .elite-mare {
-        color: #0055CC !important;
+        color: #1A5276 !important;
         font-weight: bold;
         font-size: 1.25em;
         margin-top: 15px;
@@ -50,23 +50,23 @@ st.markdown("""
     .progeny-item {
         margin-left: 25px;
         margin-bottom: 5px;
-        color: #333333;
+        color: #2C3E50;
         font-size: 1.05em;
     }
     .premium-progeny {
-        color: #0055CC !important;
+        color: #2980B9 !important;
         font-weight: bold;
     }
     .highlight-elite-daughter {
-        color: #0000FF !important;
+        color: #1B4F72 !important;
         font-weight: 900 !important;
     }
     .highlight-g1-son {
-        color: #0000FF !important;
+        color: #1B4F72 !important;
         font-weight: 900 !important;
     }
     .star-daughter {
-        color: #000000 !important;
+        color: #2C3E50 !important;
         font-weight: 900 !important;
     }
     .legend-badge {
@@ -82,45 +82,45 @@ st.markdown("""
         padding: 6px 12px !important;
         border-radius: 6px;
         display: inline-block;
-        background-color: #E3F2FD !important;
-        color: #0055CC !important;
-        border: 1px solid #0055CC !important;
+        background-color: #EBF5FB !important;
+        color: #2471A3 !important;
+        border: 1px solid #AED6F1 !important;
         margin-top: 10px;
         margin-bottom: 5px;
     }
     .info-box {
-        background-color: #f0f2f6;
+        background-color: #F8F9F9;
         padding: 12px 18px;
         border-radius: 8px;
         margin-bottom: 15px;
+        border: 1px solid #D5DBDB;
     }
     .layer-a-box {
-        background-color: #FFF3E0;
-        border-left: 5px solid #FF9800;
+        background-color: #FEF9E7;
+        border-left: 5px solid #F39C12;
         padding: 10px 15px;
         margin-bottom: 15px;
         border-radius: 4px;
     }
     .tier-badge-legendary {
-        background: linear-gradient(135deg, #FF4500, #FFD700);
+        background: linear-gradient(135deg, #F39C12, #D35400);
         color: #fff;
         padding: 2px 8px;
         border-radius: 10px;
         font-weight: bold;
         font-size: 0.85em;
-        border: 1px solid #B22222;
+        border: 1px solid #BA4A00;
     }
     .tier-badge-s-plus {
-        background: linear-gradient(135deg, #FFD700, #FFA500);
-        color: #000;
+        background: linear-gradient(135deg, #5499C7, #2980B9);
+        color: #fff;
         padding: 2px 8px;
         border-radius: 10px;
         font-weight: bold;
         font-size: 0.85em;
-        border: 1px solid #FF8C00;
     }
     .tier-badge-s {
-        background: linear-gradient(135deg, #0055CC, #00C6FF);
+        background: linear-gradient(135deg, #7FB3D5, #5499C7);
         color: #fff;
         padding: 2px 8px;
         border-radius: 10px;
@@ -128,35 +128,37 @@ st.markdown("""
         font-size: 0.85em;
     }
     .tier-badge-a {
-        background: linear-gradient(135deg, #6c757d, #adb5bd);
+        background: linear-gradient(135deg, #95A5A6, #7F8C8D);
         color: #fff;
         padding: 2px 8px;
         border-radius: 10px;
         font-weight: bold;
         font-size: 0.85em;
     }
+    /* 🚀 [눈부심 방지 및 가독성 최적화된 게이지 바 스타일] */
     .gauge-container {
-        background-color: #e9ecef;
+        background-color: #EAECEE;
         border-radius: 4px;
         width: 100%;
-        height: 10px;
+        height: 8px;
         margin-top: 4px;
         margin-bottom: 8px;
         overflow: hidden;
+        border: 1px solid #D5D8DC;
     }
     .gauge-bar {
         height: 100%;
-        background: linear-gradient(90deg, #0055CC, #00C6FF);
-        border-radius: 4px;
+        background: linear-gradient(90deg, #85C1E9, #5499C7);
+        border-radius: 3px;
     }
-    .summary-card {
-        background: linear-gradient(135deg, #f8f9fa, #e9ecef);
-        border: 2px solid #0055CC;
-        padding: 20px;
-        border-radius: 10px;
+    .summary-card-top {
+        background: linear-gradient(135deg, #F2F4F4, #E5E7E9);
+        border: 2px solid #5499C7;
+        padding: 15px 20px;
+        border-radius: 8px;
         text-align: center;
-        margin-top: 30px;
-        margin-bottom: 30px;
+        margin-top: 15px;
+        margin-bottom: 20px;
     }
     </style>
 """, unsafe_allow_html=True)
@@ -309,7 +311,7 @@ def analyze_bms_perspective(root, target_sire_query, id_to_text, id_to_parent_te
     return results
 
 # UI 화면 타이틀
-st.title("🐎 씨수말 & 외조부마(BMS) 통합 혈통 닉 분석기 (Fast Score Edition)")
+st.title("🐎 씨수말 & 외조부마(BMS) 통합 혈통 닉 분석기 (Comfortable Gauge Edition)")
 
 root_node, id_to_text, id_to_parent_text, id_to_node, err = load_mindmap_data()
 if err:
@@ -343,6 +345,34 @@ if not search_sire.strip():
 sire_clean_name = clean_name_symbols(search_sire)
 g1_pattern = re.compile(r'G1-(\d+)')
 
+# 사전 점수 집계 (상단 스코어보드 공용)
+sire_data_for_calc = analyze_sire_perspective(root_node, search_sire, id_to_text, id_to_parent_text)
+total_sire_score = sum(calculate_evaluation_score(item['progeny'])[0] for item in sire_data_for_calc)
+
+bms_data_for_calc = analyze_bms_perspective(root_node, search_sire, id_to_text, id_to_parent_text)
+total_bms_score = 0.0
+for item in bms_data_for_calc:
+    for p in item['progeny']:
+        c_name = p['child']
+        is_ed = ('@' in c_name or '#' in c_name or '*' in c_name) and ('암' in c_name or '암)' in c_name)
+        g_match = g1_pattern.search(c_name)
+        is_hg1 = bool(g_match and int(g_match.group(1)) >= 7)
+        s, _ = calculate_evaluation_score(c_name, is_elite_daughter=is_ed, is_high_g1=is_hg1)
+        total_bms_score += s
+
+total_comprehensive_score = total_sire_score + total_bms_score
+
+# 🚀 [상단 배치] 최종 종합 브리딩 스코어보드 카드
+st.markdown(f"""
+<div class='summary-card-top'>
+    <h3 style='margin: 0; color: #2E4053;'>🏆 [{sire_clean_name}] 최종 종합 브리딩 스코어보드</h3>
+    <p style='font-size: 0.95em; margin: 5px 0 10px 0; color: #566573;'>씨수말 직계 기여도와 씨암말(외조부마) 모계 파급력을 전략적으로 합산한 최종 평가입니다.</p>
+    <hr style='border: 0.5px solid #85C1E9; width: 40%; margin: 8px auto;'>
+    <h4 style='margin: 5px 0; color: #2C3E50;'>✨ 종합 통합 점수: <span style='color: #2980B9;'>{total_comprehensive_score:.1f} 점</span></h4>
+    <p style='font-size: 0.9em; margin: 0; color: #5D6D7E;'>씨수말 누적 점수: <b>{total_sire_score:.1f}점</b> | 씨암말(외조부마) 누적 점수: <b>{total_bms_score:.1f}점</b></p>
+</div>
+""", unsafe_allow_html=True)
+
 # =========================================================================
 # [탭 1] 씨수말(Sire) 관점 전수조사 실행 결과 출력
 # =========================================================================
@@ -350,7 +380,7 @@ if "1." in view_mode:
     st.subheader(f"1️⃣ 씨수말 [{sire_clean_name}] 관점 전수조사 (Layer A: 직계 자마 & 외조부마 매칭)")
     st.caption("※ 씨수말이 직접 배출한 직계 자마와 결합된 외조부마(BMS) 간의 닉 효율 및 Sire-Maker 결합 패턴을 분석합니다.")
     
-    sire_data = analyze_sire_perspective(root_node, search_sire, id_to_text, id_to_parent_text)
+    sire_data = sire_data_for_calc
     
     if not sire_data:
         st.warning("조건에 맞는 자마 데이터가 없습니다.")
@@ -371,19 +401,6 @@ if "1." in view_mode:
         
         total_progeny_count = len(sire_data)
         elite_count = sum(1 for item in sire_data if ('@' in item['progeny'] or '#' in item['progeny'] or '*' in item['progeny'] or bool(g1_pattern.search(item['progeny']))))
-        
-        total_sire_score = sum(calculate_evaluation_score(item['progeny'])[0] for item in sire_data)
-        
-        bms_data_for_calc = analyze_bms_perspective(root_node, search_sire, id_to_text, id_to_parent_text)
-        total_bms_score_calc = 0.0
-        for item in bms_data_for_calc:
-            for p in item['progeny']:
-                c_name = p['child']
-                is_ed = ('@' in c_name or '#' in c_name or '*' in c_name) and ('암' in c_name or '암)' in c_name)
-                g_match = g1_pattern.search(c_name)
-                is_hg1 = bool(g_match and int(g_match.group(1)) >= 7)
-                s, _ = calculate_evaluation_score(c_name, is_elite_daughter=is_ed, is_high_g1=is_hg1)
-                total_bms_score_calc += s
 
         col1, col2, col3, col4 = st.columns(4)
         with col1:
@@ -393,10 +410,10 @@ if "1." in view_mode:
         with col3:
             st.metric(label="🧬 씨수말 누적 스코어", value=f"{total_sire_score:.1f}점")
         with col4:
-            st.metric(label="🏛️ 씨암말(외조부마) 누적 스코어", value=f"{total_bms_score_calc:.1f}점")
+            st.metric(label="🏛️ 씨암말(외조부마) 누적 스코어", value=f"{total_bms_score:.1f}점")
 
-        bg_palette = ["#E3F2FD", "#E0F2F1", "#F3E5F5", "#E8F5E9", "#FBE9E7", "#FFFDE7", "#E1F5FE"]
-        border_palette = ["#0055CC", "#00796B", "#7B1FA2", "#388E3C", "#E64A19", "#FBC02D", "#0288D1"]
+        bg_palette = ["#EBF5FB", "#E8F8F5", "#F4ECF7", "#EAFAF1", "#FDEBD0", "#FEF9E7", "#EAF2F8"]
+        border_palette = ["#2980B9", "#16A085", "#8E44AD", "#27AE60", "#D35400", "#F39C12", "#3498DB"]
 
         nick_style_map = {}
         for idx, ns in enumerate(nick_bms):
@@ -406,8 +423,8 @@ if "1." in view_mode:
         <div class='info-box'>
             <b>전체 배출 자마 수:</b> {len(sire_data)}두 | 
             <b>현재 표시 자마 수:</b> {len(filtered_data)}두 | 
-            <b>중복 매칭된 외조부마(Nick BMS, 2두 이상):</b> <span style='color:#0055CC; font-weight:bold;'>{len(nick_bms)}두</span> | 
-            <b>단독 출현 외조부마(1두):</b> <span style='color:#0077CC; font-weight:bold;'>{len(single_bms)}두</span>
+            <b>중복 매칭된 외조부마(Nick BMS, 2두 이상):</b> <span style='color:#2980B9; font-weight:bold;'>{len(nick_bms)}두</span> | 
+            <b>단독 출현 외조부마(1두):</b> <span style='color:#2471A3; font-weight:bold;'>{len(single_bms)}두</span>
         </div>
         """, unsafe_allow_html=True)
         
@@ -477,18 +494,7 @@ if "1." in view_mode:
                 
             score, badge_h = calculate_evaluation_score(child_name, is_elite_daughter=is_elite_daughter, is_high_g1=is_high_g1)
             st.markdown(f"<div class='progeny-item'>🐴 [{idx}] {badge_h} <b>{child_display}</b> {dam_str} {bms_style} (가중 점수: <b>{score:.1f}점</b>)</div>", unsafe_allow_html=True)
-            st.markdown(f"<div style='margin-left: 25px;'><div class='gauge-container' style='width: 60%;'><div class='gauge-bar' style='width: {min(score/5, 100)}%;'></div></div></div>", unsafe_allow_html=True)
-
-        total_comprehensive_score = total_sire_score + total_bms_score_calc
-        st.markdown(f"""
-        <div class='summary-card'>
-            <h2>🏆 [{sire_clean_name}] 최종 종합 브리딩 스코어보드</h2>
-            <p style='font-size: 1.15em;'>씨수말 직계 기여도와 씨암말(외조부마) 모계 파급력을 전략적으로 합산한 최종 평가입니다.</p>
-            <hr style='border: 1px solid #0055CC; width: 50%; margin: 15px auto;'>
-            <h3 style='color: #0055CC;'>✨ 종합 통합 점수: <b>{total_comprehensive_score:.1f} 점</b></h3>
-            <p>씨수말 누적 점수: <b>{total_sire_score:.1f}점</b> | 씨암말(외조부마) 누적 점수: <b>{total_bms_score_calc:.1f}점</b></p>
-        </div>
-        """, unsafe_allow_html=True)
+            st.markdown(f"<div style='margin-left: 25px;'><div class='gauge-container'><div class='gauge-bar' style='width: {min(score/5, 100)}%;'></div></div></div>", unsafe_allow_html=True)
 
 # =========================================================================
 # [탭 2] 외조부마(BMS) 관점 분석 실행 결과 출력
@@ -497,7 +503,7 @@ else:
     st.subheader(f"2️⃣ 외조부마(BMS) [{sire_clean_name}] 관점 분석 (Layer B: 모계 확장 축)")
     st.caption(f"※ 해당 씨수말의 직계 딸('암)' 표기)들이 배출한 자마 및 교배 부마(Father)의 닉(Nick) 조합을 분석합니다.")
     
-    bms_data = analyze_bms_perspective(root_node, search_sire, id_to_text, id_to_parent_text)
+    bms_data = bms_data_for_calc
     
     if not bms_data:
         st.warning(f"'{search_sire}'의 조건('암)' 표기 + 연결된 자마 보유)을 만족하는 직계 딸 데이터가 없습니다.")
@@ -518,19 +524,6 @@ else:
         nick_sires = [father for father, count in father_counts.items() if count >= 2 and father != "정보 없음"]
         single_sires = [father for father, count in father_counts.items() if count == 1 and father != "정보 없음"]
 
-        total_bms_score = 0.0
-        for item in bms_data:
-            for p in item['progeny']:
-                c_name = p['child']
-                is_ed = ('@' in c_name or '#' in c_name or '*' in c_name) and ('암' in c_name or '암)' in c_name)
-                g_match = g1_pattern.search(c_name)
-                is_hg1 = bool(g_match and int(g_match.group(1)) >= 7)
-                s, _ = calculate_evaluation_score(c_name, is_elite_daughter=is_ed, is_high_g1=is_hg1)
-                total_bms_score += s
-
-        sire_data_for_calc = analyze_sire_perspective(root_node, search_sire, id_to_text, id_to_parent_text)
-        total_sire_score_calc = sum(calculate_evaluation_score(item['progeny'])[0] for item in sire_data_for_calc)
-
         col1, col2, col3, col4 = st.columns(4)
         with col1:
             st.metric(label="💎 조건 충족 직계딸(종빈마)", value=f"{len(bms_data)}두")
@@ -539,10 +532,10 @@ else:
         with col3:
             st.metric(label="🏛️ 씨암말(외조부마) 누적 스코어", value=f"{total_bms_score:.1f}점")
         with col4:
-            st.metric(label="🧬 씨수말 누적 스코어", value=f"{total_sire_score_calc:.1f}점")
+            st.metric(label="🧬 씨수말 누적 스코어", value=f"{total_sire_score:.1f}점")
 
-        bg_palette = ["#E3F2FD", "#E0F2F1", "#F3E5F5", "#E8F5E9", "#FBE9E7", "#FFFDE7", "#E1F5FE"]
-        border_palette = ["#0055CC", "#00796B", "#7B1FA2", "#388E3C", "#E64A19", "#FBC02D", "#0288D1"]
+        bg_palette = ["#EBF5FB", "#E8F8F5", "#F4ECF7", "#EAFAF1", "#FDEBD0", "#FEF9E7", "#EAF2F8"]
+        border_palette = ["#2980B9", "#16A085", "#8E44AD", "#27AE60", "#D35400", "#F39C12", "#3498DB"]
 
         nick_style_map = {}
         for idx, ns in enumerate(nick_sires):
@@ -624,18 +617,6 @@ else:
                 else:
                     father_display = f"<b>{father_name}</b>"
                     
-                # 🚀 [오류 수정 완료 부분] 변수 스코프 및 렌더링 정상화
                 score, badge_h = calculate_evaluation_score(child_name, is_elite_daughter=is_elite_daughter, is_high_g1=is_high_g1)
                 st.markdown(f"<div class='progeny-item'>🔗 {badge_h} [연결 자마] {child_name} (부마: {father_display}) — 가중 점수: <b>{score:.1f}점</b></div>", unsafe_allow_html=True)
-                st.markdown(f"<div style='margin-left: 25px;'><div class='gauge-container' style='width: 60%;'><div class='gauge-bar' style='width: {min(score/5, 100)}%;'></div></div></div>", unsafe_allow_html=True)
-
-        total_comprehensive_score = total_sire_score_calc + total_bms_score
-        st.markdown(f"""
-        <div class='summary-card'>
-            <h2>🏆 [{sire_clean_name}] 최종 종합 브리딩 스코어보드</h2>
-            <p style='font-size: 1.15em;'>씨수말 직계 기여도와 씨암말(외조부마) 모계 파급력을 전략적으로 합산한 최종 평가입니다.</p>
-            <hr style='border: 1px solid #0055CC; width: 50%; margin: 15px auto;'>
-            <h3 style='color: #0055CC;'>✨ 종합 통합 점수: <b>{total_comprehensive_score:.1f} 점</b></h3>
-            <p>씨수말 누적 점수: <b>{total_sire_score_calc:.1f}점</b> | 씨암말(외조부마) 누적 점수: <b>{total_bms_score:.1f}점</b></p>
-        </div>
-        """, unsafe_allow_html=True) 
+                st.markdown(f"<div style='margin-left: 25px;'><div class='gauge-container'><div class='gauge-bar' style='width: {min(score/5, 100)}%;'></div></div></div>", unsafe_allow_html=True) 
