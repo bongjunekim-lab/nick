@@ -35,19 +35,19 @@ def is_valid_mare(name):
     return True
 
 # 1. 페이지 설정
-st.set_page_config(page_title="씨수말 & 외조부마(BMS) 통합 혈통 닉 분석기 (Fixed Edition)", layout="wide")
+st.set_page_config(page_title="씨수말 & 외조부마(BMS) 통합 혈통 닉 분석기", layout="wide")
 
-# CSS 스타일 정의 (간격 확대 및 막대바 연하게 조정 포함)
+# CSS 스타일 정의
 st.markdown("""
     <style>
     .elite-mare {
         color: #1B4F72 !important;
         font-weight: bold;
         font-size: 1.25em;
-        margin-top: 35px; /* 항목 간격 확대 */
+        margin-top: 35px;
         margin-bottom: 8px;
         padding-top: 15px;
-        border-top: 1px dashed #D5D8DC; /* 시각적 구분선 추가 */
+        border-top: 1px dashed #D5D8DC;
     }
     .progeny-item {
         margin-left: 25px;
@@ -65,10 +65,6 @@ st.markdown("""
     }
     .highlight-g1-son {
         color: #1B4F72 !important;
-        font-weight: 900 !important;
-    }
-    .star-daughter {
-        color: #2C3E50 !important;
         font-weight: 900 !important;
     }
     .legend-badge {
@@ -130,7 +126,7 @@ st.markdown("""
     }
     .gauge-bar {
         height: 100%;
-        background: linear-gradient(90deg, #D4E6F1, #85C1E9); /* 막대바를 더 연하게 지정 */
+        background: linear-gradient(90deg, #D4E6F1, #85C1E9);
         border-radius: 3px;
     }
     .summary-card-top {
@@ -316,7 +312,7 @@ if "1." in view_mode:
     hide_unknown = st.sidebar.checkbox("미상 항목 숨기기 (연결선 단절 데이터 삭제)", value=False)
 
 st.sidebar.markdown("---")
-highlight_special_progeny = st.sidebar.checkbox("🎯 특수 자마 하이라이트 (암말 @,* & 수말 G1-7+ 진한 파란색 강조)", value=True)
+highlight_special_progeny = st.sidebar.checkbox("🎯 특수 자마 하이라이트 (암말 @,#,* & 수말 G1-7+ 진한 파란색 강조)", value=True)
 
 if not search_sire.strip():
     st.info("👈 좌측 사이드바에 검색하고 싶은 씨수말 이름을 입력해 주세요.")
@@ -334,7 +330,7 @@ total_bms_score = 0.0
 for item in bms_data_for_calc:
     for p in item['progeny']:
         c_name = p['child']
-        is_ed = is_valid_mare(c_name) and any(sym in c_name for sym in ['@', '*'])
+        is_ed = is_valid_mare(c_name) and any(sym in c_name for sym in ['@', '#', '*'])
         g_match = g1_pattern.search(c_name)
         g1_wins = int(g_match.group(1)) if g_match else 0
         is_hg1 = (not is_valid_mare(c_name)) and (g1_wins >= 7)
@@ -373,23 +369,32 @@ if "1." in view_mode:
             filtered_data.append(item)
 
         bms_counts = defaultdict(int)
+        bms_has_special_progeny = defaultdict(bool)
+        
         for item in sire_data:
-            if item['bms'] and item['bms'] != "미상":
-                bms_counts[item['bms']] += 1
-                
-        nick_bms = [bms for bms, cnt in bms_counts.items() if cnt >= 2]
-        single_bms = [bms for bms, cnt in bms_counts.items() if cnt == 1 and bms != "미상"]
+            bms = item['bms']
+            if bms and bms != "미상":
+                bms_counts[bms] += 1
+                c_name = item['progeny']
+                g_match = g1_pattern.search(c_name)
+                g_wins = int(g_match.group(1)) if g_match else 0
+                is_dau = is_valid_mare(c_name)
+                # ✅ [조건 반영] 1. 암말 @, #, * 기호 보유 OR 2. 수말 G1-7두 이상 배출
+                if (is_dau and any(sym in c_name for sym in ['@', '#', '*'])) or (not is_dau and g_wins >= 7):
+                    bms_has_special_progeny[bms] = True
+
+        # ✅ 닉(2두 이상)이 아니더라도, 특수 자마를 1두라도 보유했다면 무조건 타겟에 포함!
+        target_bms_list = [bms for bms in bms_counts.keys() if bms != "미상" and (bms_counts[bms] >= 2 or bms_has_special_progeny[bms])]
         
         total_progeny_count = len(sire_data)
         
-        # 🌟 엄선된 조건(수말 G1-7승 이상 OR 암말 @, #, *) 기준 엘리트 자마 카운트
         elite_count = 0
         for item in sire_data:
             c_name = item['progeny']
             g_match = g1_pattern.search(c_name)
             g_wins = int(g_match.group(1)) if g_match else 0
             is_dau = is_valid_mare(c_name)
-            if (not is_dau and g_wins >= 7) or (is_dau and any(sym in c_name for sym in ['@', '#', '*'])):
+            if (is_dau and any(sym in c_name for sym in ['@', '#', '*'])) or (not is_dau and g_wins >= 7):
                 elite_count += 1
 
         col1, col2, col3, col4 = st.columns(4)
@@ -406,15 +411,14 @@ if "1." in view_mode:
         border_palette = ["#1B4F72", "#16A085", "#8E44AD", "#27AE60", "#D35400", "#F39C12", "#2980B9"]
 
         nick_style_map = {}
-        for idx, ns in enumerate(nick_bms):
+        for idx, ns in enumerate(target_bms_list):
             nick_style_map[ns] = (border_palette[idx % len(border_palette)], bg_palette[idx % len(bg_palette)])
 
         st.markdown(f"""
         <div class='info-box'>
             <b>전체 배출 자마 수:</b> {len(sire_data)}두 | 
             <b>현재 표시 자마 수:</b> {len(filtered_data)}두 | 
-            <b>중복 매칭된 외조부마(Nick BMS, 2두 이상):</b> <span style='color:#1B4F72; font-weight:bold;'>{len(nick_bms)}두</span> | 
-            <b>단독 출현 외조부마(1두):</b> <span style='color:#1B4F72; font-weight:bold;'>{len(single_bms)}두</span>
+            <b>주요 외조부마(2두 이상 또는 특수자마 보유):</b> <span style='color:#1B4F72; font-weight:bold;'>{len(target_bms_list)}두</span>
         </div>
         """, unsafe_allow_html=True)
         
@@ -424,9 +428,9 @@ if "1." in view_mode:
             if bms_full and bms_full != "미상":
                 bms_grouped_items[bms_full].append(item)
 
-        if nick_bms:
-            st.markdown("🎨 **주요 외조부마(Nick BMS, 2두 이상) 범례 및 특수 자마 목록 (수말 G1-7승+ / 암말 @,#,*):**")
-            for bms_name in nick_bms:
+        if target_bms_list:
+            st.markdown("🎨 **주요 외조부마 범례 및 특수 자마 목록 (암말 @,#,* / 수말 G1-7두+):**")
+            for bms_name in target_bms_list:
                 b_c, bg_c = nick_style_map[bms_name]
                 cnt = bms_counts[bms_name]
                 badge_html = f"<div style='margin-top: 10px;'><span class='legend-badge' style='background-color:{bg_c}; color:{b_c}; border:1px solid {b_c};'>{clean_name_symbols(bms_name)} ({cnt}두)</span></div>"
@@ -440,7 +444,6 @@ if "1." in view_mode:
                     g1_wins = int(g1_match.group(1)) if g1_match else 0
                     is_daughter = is_valid_mare(child_name)
                     
-                    # ✅ [1번 반영] 수말 G1-7승 이상 OR 암말 @, #, * 만 엄선
                     is_high_g1_son = (not is_daughter) and (g1_wins >= 7)
                     is_elite_daughter = is_daughter and any(sym in child_name for sym in ['@', '#', '*'])
                     
@@ -469,7 +472,7 @@ if "1." in view_mode:
                             
                         st.markdown(f"&nbsp;&nbsp;&nbsp;&nbsp;↳ {badge_h} {c_display} --- 🔗 (모마: {dam_display}) [가중 점수: <b>{score:.1f}점</b>]", unsafe_allow_html=True)
                 else:
-                    st.markdown(f"&nbsp;&nbsp;&nbsp;&nbsp;↳ <span style='color: #888; font-style: italic;'>조건(수말 G1-7승+ 또는 암말 @,#,*)을 만족하는 자마 없음</span>", unsafe_allow_html=True)
+                    st.markdown(f"&nbsp;&nbsp;&nbsp;&nbsp;↳ <span style='color: #888; font-style: italic;'>조건(암말 @,#,* 또는 수말 G1-7두+)을 만족하는 자마 없음</span>", unsafe_allow_html=True)
 
         st.markdown("---")
         st.markdown("### 📋 전체 자마 리스트 및 외조부마 매칭 (Layer A 원본 데이터)")
@@ -500,7 +503,7 @@ if "1." in view_mode:
             
             if item['bms'] in nick_style_map:
                 b_c, bg_c = nick_style_map[item['bms']]
-                bms_style = f"| <span style='color:{b_c}; background-color:{bg_c}; font-weight:bold; padding:2px 6px; border-radius:4px; border:1px solid {b_c}80;'>[외조부마: {bms_display}]</span>"
+                bms_style = f"| <span style='color:{b_c}; background-color:{bg_c}; font-weight:bold; padding:2px 6px; border-radius:4px; border:1px solid {b_c}80;>[외조부마: {bms_display}]</span>"
             else:
                 bms_style = f"| [외조부마: {bms_display}]"
                 
@@ -521,6 +524,7 @@ else:
         st.warning(f"'{search_sire}'의 조건('암)' 표기 + 연결된 자마 보유)을 만족하는 직계 딸 데이터가 없습니다.")
     else:
         father_counts = defaultdict(int)
+        father_has_special_progeny = defaultdict(bool)
         father_grouped_progenies = defaultdict(list)
 
         for item in bms_data:
@@ -528,13 +532,20 @@ else:
             for p in item['progeny']:
                 f_name = p['father']
                 father_counts[f_name] += 1
+                
+                c_name = p['child']
+                g_match = g1_pattern.search(c_name)
+                g_wins = int(g_match.group(1)) if g_match else 0
+                is_dau = is_valid_mare(c_name)
+                if (is_dau and any(sym in c_name for sym in ['@', '#', '*'])) or (not is_dau and g_wins >= 7):
+                    father_has_special_progeny[f_name] = True
+
                 father_grouped_progenies[f_name].append({
                     'daughter': daughter_name,
-                    'child': p['child']
+                    'child': c_name
                 })
 
-        nick_sires = [father for father, count in father_counts.items() if count >= 2 and father != "정보 없음"]
-        single_sires = [father for father, count in father_counts.items() if count == 1 and father != "정보 없음"]
+        target_sires = [father for father in father_counts.keys() if father != "정보 없음" and (father_counts[father] >= 2 or father_has_special_progeny[father])]
 
         col1, col2, col3, col4 = st.columns(4)
         with col1:
@@ -550,12 +561,12 @@ else:
         border_palette = ["#1B4F72", "#16A085", "#8E44AD", "#27AE60", "#D35400", "#F39C12", "#2980B9"]
 
         nick_style_map = {}
-        for idx, ns in enumerate(nick_sires):
+        for idx, ns in enumerate(target_sires):
             nick_style_map[ns] = (border_palette[idx % len(border_palette)], bg_palette[idx % len(bg_palette)])
 
-        if nick_sires:
-            st.markdown("🎨 **중복 교배 부마(Nick) 하이라이트 범례 및 특수 자마 목록 (수말 G1-7승+ / 암말 @,#,*):**")
-            for ns in nick_sires:
+        if target_sires:
+            st.markdown("🎨 **주요 교배 부마 하이라이트 범례 및 특수 자마 목록 (암말 @,#,* / 수말 G1-7두+):**")
+            for ns in target_sires:
                 b_c, bg_c = nick_style_map[ns]
                 cnt = father_counts[ns]
                 badge_html = f"<div style='margin-top: 10px;'><span class='legend-badge' style='background-color:{bg_c}; color:{b_c}; border:1px solid {b_c};'>{ns} ({cnt}두)</span></div>"
@@ -569,7 +580,6 @@ else:
                     g1_wins = int(g1_match.group(1)) if g1_match else 0
                     is_daughter = is_valid_mare(child_name)
                     
-                    # ✅ [2번 반영] 수말 G1-7승 이상 OR 암말 @, #, * 만 엄선
                     is_high_g1_son = (not is_daughter) and (g1_wins >= 7)
                     is_elite_daughter = is_daughter and any(sym in child_name for sym in ['@', '#', '*'])
                     
@@ -607,7 +617,7 @@ else:
             mare_scores = []
             for p in progeny_list:
                 c_name = p['child']
-                is_ed = is_valid_mare(c_name) and any(sym in c_name for sym in ['@', '*'])
+                is_ed = is_valid_mare(c_name) and any(sym in c_name for sym in ['@', '#', '*'])
                 g_match = g1_pattern.search(c_name)
                 g1_wins = int(g_match.group(1)) if g_match else 0
                 is_hg1 = (not is_valid_mare(c_name)) and (g1_wins >= 7)
@@ -640,7 +650,6 @@ else:
                 g1_wins = int(g1_match.group(1)) if g1_match else 0
                 is_daughter = is_valid_mare(child_name)
                 
-                # ✅ [2번 반영] 수말 G1-7승 이상 OR 암말 @, #, * 만 엄선
                 is_high_g1_son = (not is_daughter) and (g1_wins >= 7)
                 is_elite_daughter = is_daughter and any(sym in child_name for sym in ['@', '#', '*'])
 
