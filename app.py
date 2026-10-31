@@ -164,7 +164,7 @@ def parse_race_record_score(text, is_elite_daughter=False, is_high_g1=False):
     """
     [정밀 등급 및 전적 파서]
     - 괄호 내 전적(예: 32전 12승) 파악
-    - G1, G2, G3 등급 유무를 판별하여 일반경주급과 대상경주급을 정확히 분리
+    - G1-12, G1 12, G1승수 등 다양한 G1 표기 방식을 유연하게 파싱
     """
     score = 30.0 # 기본 기초 점수
     
@@ -178,7 +178,8 @@ def parse_race_record_score(text, is_elite_daughter=False, is_high_g1=False):
 
     g1_win_count = 0
     if has_g1:
-        g1_win_matches = re.findall(r'G1\s*(\d+)\s*승', text)
+        # G1-12, G1 12, G1 12승 등 다양한 형태에서 숫자를 안전하게 추출
+        g1_win_matches = re.findall(r'G1\s*[-]?\s*(\d+)\s*(?:승)?', text)
         if g1_win_matches:
             g1_win_count = max([int(x) for x in g1_win_matches])
         else:
@@ -203,7 +204,6 @@ def parse_race_record_score(text, is_elite_daughter=False, is_high_g1=False):
     if match_record:
         total_wins = int(match_record.group(2))
         
-        # G1, G2, G3 입상 경력이 전혀 없는 '일반경주급' 말인 경우 (모던카우보이 등)
         if not has_g1 and not has_g2 and not has_g3 and not has_g1p:
             score += min(total_wins * 3.0, 45.0)
         else:
@@ -225,10 +225,14 @@ def calculate_evaluation_score(text, is_elite_daughter=False, is_high_g1=False):
 
 def check_special_condition(text):
     """자마 이름/전적 텍스트에서 엘리트 암말 또는 고승수 G1 아들 여부를 판별합니다."""
+    if not text:
+        return False
+        
     has_g1 = 'G1' in text
     g1_wins = 0
     if has_g1:
-        g1_win_matches = re.findall(r'G1\s*(\d+)\s*승', text)
+        # G1-12, G1 12, G1승 등 다양한 형태를 폭넓게 매칭하여 고승수 추출
+        g1_win_matches = re.findall(r'G1\s*[-]?\s*(\d+)\s*(?:승)?', text)
         if g1_win_matches:
             g1_wins = max([int(x) for x in g1_win_matches])
         elif 'G1M' in text or ('G1' in text and '승' not in text and 'P' not in text and '회' not in text and not re.search(r'G1\s*-\s*\d+', text)):
@@ -389,7 +393,7 @@ for item in bms_data_for_calc:
     for p in item['progeny']:
         c_name = p['child']
         is_ed = is_valid_mare(c_name) and any(sym in c_name for sym in ['@', '#'])
-        has_g1_win = ('G1 1승' in c_name or 'G1M' in c_name)
+        has_g1_win = ('G1 1승' in c_name or 'G1M' in c_name or bool(re.search(r'G1\s*[-]?\s*([7-9]|\d{2,})', c_name)))
         is_hg1 = (not is_valid_mare(c_name)) and has_g1_win
         s, _ = calculate_evaluation_score(c_name, is_elite_daughter=is_ed, is_high_g1=is_hg1)
         total_bms_score += s
@@ -615,7 +619,7 @@ else:
             for p in progeny_list:
                 c_name = p['child']
                 is_ed = is_valid_mare(c_name) and any(sym in c_name for sym in ['@', '#'])
-                has_g1_win = ('G1 1승' in c_name or 'G1M' in c_name)
+                has_g1_win = ('G1 1승' in c_name or 'G1M' in c_name or bool(re.search(r'G1\s*[-]?\s*([7-9]|\d{2,})', c_name)))
                 is_hg1 = (not is_valid_mare(c_name)) and has_g1_win
                 s, _ = calculate_evaluation_score(c_name, is_elite_daughter=is_ed, is_high_g1=is_hg1)
                 mare_scores.append(s)
