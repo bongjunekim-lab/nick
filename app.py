@@ -39,7 +39,7 @@ def parse_sire_self_info(node_text):
 # 1. 페이지 설정
 st.set_page_config(page_title="씨수말 & 외조부마(BMS) 통합 혈통 닉 분석기", layout="wide")
 
-# CSS 스타일 정의 (표시해주신 사각형과 같은 환하고 선명한 파란색 `#007FFF` 적용)
+# CSS 스타일 정의
 st.markdown("""
     <style>
     .elite-mare {
@@ -57,12 +57,10 @@ st.markdown("""
         color: #2C3E50;
         font-size: 1.05em;
     }
-    /* 조건 만족: 굵고 환한 파란색 (이미지 사각형 색상 반영) */
     .highlight-special-blue {
         font-weight: 900 !important;
         color: #007FFF !important;
     }
-    /* 특수기호 *: 굵은 검은색 */
     .highlight-special-star {
         font-weight: 900 !important;
         color: #000000 !important;
@@ -72,13 +70,6 @@ st.markdown("""
         border-radius: 8px;
         margin-bottom: 12px;
         border: 1px solid #BDC3C7;
-    }
-    .info-box {
-        background-color: #F8F9F9;
-        padding: 12px 18px;
-        border-radius: 8px;
-        margin-bottom: 15px;
-        border: 1px solid #D5DBDB;
     }
     .tier-badge-legendary {
         background: linear-gradient(135deg, #F39C12, #D35400);
@@ -169,32 +160,61 @@ def load_mindmap_data():
     except Exception as e:
         return None, None, None, None, f"파일 분석 오류: {str(e)}"
 
-g1_pattern = re.compile(r'G1[^\d]*(\d+)')
+def parse_race_record_score(text, is_elite_daughter=False, is_high_g1=False):
+    """
+    [정밀 등급 및 전적 파서]
+    - 괄호 내 전적(예: 32전 12승) 파악
+    - G1, G2, G3, G1P 등급 유무를 판별하여 일반경주급과 대상경주급을 정확히 분리
+    """
+    score = 30.0 # 기본 기초 점수
+    
+    if not text:
+        return score, "<span class='tier-badge-a'>✨ A Tier</span>"
 
-def check_special_condition(text):
-    g1_matches = g1_pattern.findall(text)
-    g1_wins = max([int(x) for x in g1_matches]) if g1_matches else 0
-    is_daughter = is_valid_mare(text)
-    
-    is_special_mare = is_daughter and any(sym in text for sym in ['@', '#'])
-    is_high_g1_son = (not is_daughter) and (g1_wins >= 7)
-    
-    return is_special_mare or is_high_g1_son
+    # G1, G2, G3 등급 표기가 텍스트 내에 실제로 존재하는지 확인
+    has_g1 = 'G1' in text
+    has_g2 = 'G2' in text
+    has_g3 = 'G3' in text
+    has_g1p = 'G1P' in text
 
-def calculate_evaluation_score(text, is_elite_daughter=False, is_high_g1=False):
-    score = 30.0
+    # G1 우승 횟수 산출 (G1 표기가 있더라도 G1-1 같은 지수가 아닌 승리/회 기록일 때만)
+    g1_win_count = 0
+    if has_g1:
+        g1_win_matches = re.findall(r'G1\s*(\d+)\s*승', text)
+        if g1_win_matches:
+            g1_win_count = max([int(x) for x in g1_win_matches])
+        else:
+            g1_회_matches = re.findall(r'G1\s*(\d+)\s*회', text)
+            if g1_회_matches:
+                g1_win_count = max([int(x) for x in g1_회_matches])
+            elif 'G1M' in text or ('G1' in text and '승' not in text and 'P' not in text and '회' not in text and not re.search(r'G1\s*-\s*\d+', text)):
+                g1_win_count = 1
+
+    # 점수 가산 반영
+    score += g1_win_count * 40.0
     
-    g1_matches = g1_pattern.findall(text)
-    g1_wins = max([int(x) for x in g1_matches]) if g1_matches else 0
-    
-    score += g1_wins * 10.0
+    if has_g1p or has_g2 or has_g3:
+        score += 25.0
+
     if is_elite_daughter:
         score += 30.0
     if is_high_g1:
         score += 20.0
-    if '전' in text and '승' in text:
-        score += 15.0
+
+    # 괄호 안의 전적 및 승수 추출 (예: 32전 12승)
+    match_record = re.search(r'(\d+)전\s*(\d+)승', text)
+    if match_record:
+        total_wins = int(match_record.group(2))
         
+        # G1, G2, G3 입상 경력이 전혀 없는 '일반경주급' 말인 경우 (모던카우보이 등)
+        if not has_g1 and not has_g2 and not has_g3 and not has_g1p:
+            # 일반 다승마 성취도 반영 (승당 3점, 최대 45점)
+            score += min(total_wins * 3.0, 45.0)
+        else:
+            # 대상경주급 경주마의 일반 승수 보상
+            score += total_wins * 1.5
+
+    # 최종 등급 뱃지 결정
     if score >= 300.0:
         badge_html = "<span class='tier-badge-legendary'>🌟 LEGENDARY S++</span>"
     elif score >= 150.0:
@@ -205,6 +225,9 @@ def calculate_evaluation_score(text, is_elite_daughter=False, is_high_g1=False):
         badge_html = "<span class='tier-badge-a'>✨ A Tier</span>"
         
     return score, badge_html
+
+def calculate_evaluation_score(text, is_elite_daughter=False, is_high_g1=False):
+    return parse_race_record_score(text, is_elite_daughter, is_high_g1)
 
 def analyze_sire_perspective(root, target_sire_query, id_to_text, id_to_parent_text):
     query_norm = normalize_name(target_sire_query)
@@ -327,7 +350,6 @@ if not search_sire.strip():
 
 sire_clean_name = clean_name_symbols(search_sire)
 
-# 씨수말 본인의 노드 텍스트를 일괄로 정밀하게 탐색
 sire_node_text = ""
 query_pattern = re.compile(re.escape(sire_clean_name), re.IGNORECASE)
 
@@ -356,9 +378,8 @@ for item in bms_data_for_calc:
     for p in item['progeny']:
         c_name = p['child']
         is_ed = is_valid_mare(c_name) and any(sym in c_name for sym in ['@', '#'])
-        g_matches = g1_pattern.findall(c_name)
-        g1_wins = max([int(x) for x in g_matches]) if g_matches else 0
-        is_hg1 = (not is_valid_mare(c_name)) and (g1_wins >= 7)
+        has_g1_win = ('G1 1승' in c_name or 'G1M' in c_name)
+        is_hg1 = (not is_valid_mare(c_name)) and has_g1_win
         s, _ = calculate_evaluation_score(c_name, is_elite_daughter=is_ed, is_high_g1=is_hg1)
         total_bms_score += s
 
@@ -583,9 +604,8 @@ else:
             for p in progeny_list:
                 c_name = p['child']
                 is_ed = is_valid_mare(c_name) and any(sym in c_name for sym in ['@', '#'])
-                g_matches = g1_pattern.findall(c_name)
-                g1_wins = max([int(x) for x in g_matches]) if g_matches else 0
-                is_hg1 = (not is_valid_mare(c_name)) and (g1_wins >= 7)
+                has_g1_win = ('G1 1승' in c_name or 'G1M' in c_name)
+                is_hg1 = (not is_valid_mare(c_name)) and has_g1_win
                 s, _ = calculate_evaluation_score(c_name, is_elite_daughter=is_ed, is_high_g1=is_hg1)
                 mare_scores.append(s)
             
