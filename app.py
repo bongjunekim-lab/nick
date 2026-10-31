@@ -30,6 +30,39 @@ def is_valid_mare(name):
         return True
     return False
 
+def parse_sire_self_info(node_text):
+    """씨수말 노드 텍스트에서 상세 스펙(연도, 전적, G1, 지수 등)을 파싱합니다."""
+    info = {
+        'year': '',
+        'record': '',
+        'g1_info': '',
+        'details': []
+    }
+    if not node_text:
+        return info
+    
+    # 연도 추출 (예: 1997)
+    year_match = re.search(r'\b(19\d{2}|20\d{2})\b', node_text)
+    if year_match:
+        info['year'] = year_match.group(1)
+        
+    # 전적 추출 (예: 15전 8승)
+    record_match = re.search(r'(\d+전\s*\d+승(?:\s*\d+)?\s*(?:\d+)?)', node_text)
+    if record_match:
+        info['record'] = record_match.group(1)
+        
+    # G1 및 기타 지수 추출
+    g1_m = re.search(r'(G1\s*\d+회|G1\s*\d+승|G1[^\s]*)', node_text)
+    if g1_m:
+        info['g1_info'] = g1_m.group(1)
+        
+    # 기타 세부 태그들 (예: M6(3), AG 100, 국1-3 등) 추출
+    parts = node_text.split('/')
+    if len(parts) > 1:
+        info['details'] = [p.strip() for p in parts[1:]]
+        
+    return info
+
 # 1. 페이지 설정
 st.set_page_config(page_title="씨수말 & 외조부마(BMS) 통합 혈통 닉 분석기", layout="wide")
 
@@ -321,6 +354,16 @@ if not search_sire.strip():
 
 sire_clean_name = clean_name_symbols(search_sire)
 
+# 씨수말 본인의 노드 텍스트를 찾아 상세 프로필 추출
+sire_node_text = ""
+for node in root_node.iter('node'):
+    my_text = node.get('TEXT', '')
+    if sire_clean_name.lower() in normalize_name(my_text):
+        sire_node_text = my_text
+        break
+
+sire_spec = parse_sire_self_info(sire_node_text)
+
 sire_data_for_calc = analyze_sire_perspective(root_node, search_sire, id_to_text, id_to_parent_text)
 total_sire_score = sum(calculate_evaluation_score(item['progeny'])[0] for item in sire_data_for_calc)
 
@@ -338,9 +381,23 @@ for item in bms_data_for_calc:
 
 total_comprehensive_score = total_sire_score + total_bms_score
 
+spec_html = ""
+if sire_spec['year'] or sire_spec['record'] or sire_spec['g1_info'] or sire_spec['details']:
+    badge_parts = []
+    if sire_spec['year']:
+        badge_parts.append(f"출생: {sire_spec['year']}")
+    if sire_spec['record']:
+        badge_parts.append(f"전적: {sire_spec['record']}")
+    if sire_spec['g1_info']:
+        badge_parts.append(sire_spec['g1_info'])
+    for d in sire_spec['details']:
+        badge_parts.append(d)
+    spec_html = " | ".join(badge_parts)
+
 st.markdown(f"""
 <div class='summary-card-top'>
     <h3 style='margin: 0; color: #2E4053;'>🏆 [{sire_clean_name}] 최종 종합 브리딩 스코어보드</h3>
+    {f"<p style='font-size: 0.95em; margin: 6px 0; color: #1B4F72; font-weight: bold;'>📌 씨수말 프로필 스펙: {spec_html}</p>" if spec_html else ""}
     <p style='font-size: 0.95em; margin: 5px 0 10px 0; color: #566573;'>씨수말 직계 기여도와 씨암말(외조부마) 모계 파급력을 전략적으로 합산한 최종 평가입니다.</p>
     <hr style='border: 0.5px solid #1B4F72; width: 40%; margin: 8px auto;'>
     <h4 style='margin: 5px 0; color: #2C3E50;'>✨ 종합 통합 점수: <span style='color: #1B4F72;'>{total_comprehensive_score:.1f} 점</span></h4>
