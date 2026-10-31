@@ -164,20 +164,18 @@ def parse_race_record_score(text, is_elite_daughter=False, is_high_g1=False):
     """
     [정밀 등급 및 전적 파서]
     - 괄호 내 전적(예: 32전 12승) 파악
-    - G1, G2, G3, G1P 등급 유무를 판별하여 일반경주급과 대상경주급을 정확히 분리
+    - G1, G2, G3 등급 유무를 판별하여 일반경주급과 대상경주급을 정확히 분리
     """
     score = 30.0 # 기본 기초 점수
     
     if not text:
         return score, "<span class='tier-badge-a'>✨ A Tier</span>"
 
-    # G1, G2, G3 등급 표기가 텍스트 내에 실제로 존재하는지 확인
     has_g1 = 'G1' in text
     has_g2 = 'G2' in text
     has_g3 = 'G3' in text
     has_g1p = 'G1P' in text
 
-    # G1 우승 횟수 산출 (G1 표기가 있더라도 G1-1 같은 지수가 아닌 승리/회 기록일 때만)
     g1_win_count = 0
     if has_g1:
         g1_win_matches = re.findall(r'G1\s*(\d+)\s*승', text)
@@ -190,7 +188,6 @@ def parse_race_record_score(text, is_elite_daughter=False, is_high_g1=False):
             elif 'G1M' in text or ('G1' in text and '승' not in text and 'P' not in text and '회' not in text and not re.search(r'G1\s*-\s*\d+', text)):
                 g1_win_count = 1
 
-    # 점수 가산 반영
     score += g1_win_count * 40.0
     
     if has_g1p or has_g2 or has_g3:
@@ -208,13 +205,10 @@ def parse_race_record_score(text, is_elite_daughter=False, is_high_g1=False):
         
         # G1, G2, G3 입상 경력이 전혀 없는 '일반경주급' 말인 경우 (모던카우보이 등)
         if not has_g1 and not has_g2 and not has_g3 and not has_g1p:
-            # 일반 다승마 성취도 반영 (승당 3점, 최대 45점)
             score += min(total_wins * 3.0, 45.0)
         else:
-            # 대상경주급 경주마의 일반 승수 보상
             score += total_wins * 1.5
 
-    # 최종 등급 뱃지 결정
     if score >= 300.0:
         badge_html = "<span class='tier-badge-legendary'>🌟 LEGENDARY S++</span>"
     elif score >= 150.0:
@@ -228,6 +222,23 @@ def parse_race_record_score(text, is_elite_daughter=False, is_high_g1=False):
 
 def calculate_evaluation_score(text, is_elite_daughter=False, is_high_g1=False):
     return parse_race_record_score(text, is_elite_daughter, is_high_g1)
+
+def check_special_condition(text):
+    """자마 이름/전적 텍스트에서 엘리트 암말 또는 고승수 G1 아들 여부를 판별합니다."""
+    has_g1 = 'G1' in text
+    g1_wins = 0
+    if has_g1:
+        g1_win_matches = re.findall(r'G1\s*(\d+)\s*승', text)
+        if g1_win_matches:
+            g1_wins = max([int(x) for x in g1_win_matches])
+        elif 'G1M' in text or ('G1' in text and '승' not in text and 'P' not in text and '회' not in text and not re.search(r'G1\s*-\s*\d+', text)):
+            g1_wins = 1
+
+    is_daughter = is_valid_mare(text)
+    is_special_mare = is_daughter and any(sym in text for sym in ['@', '#'])
+    is_high_g1_son = (not is_daughter) and (g1_wins >= 7)
+    
+    return is_special_mare or is_high_g1_son
 
 def analyze_sire_perspective(root, target_sire_query, id_to_text, id_to_parent_text):
     query_norm = normalize_name(target_sire_query)
