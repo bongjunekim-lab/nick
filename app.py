@@ -178,7 +178,6 @@ def parse_race_record_score(text, is_elite_daughter=False, is_high_g1=False):
 
     g1_win_count = 0
     if has_g1:
-        # G1-12, G1 12, G1 12승 등 다양한 형태에서 숫자를 안전하게 추출
         g1_win_matches = re.findall(r'G1\s*[-]?\s*(\d+)\s*(?:승)?', text)
         if g1_win_matches:
             g1_win_count = max([int(x) for x in g1_win_matches])
@@ -199,7 +198,6 @@ def parse_race_record_score(text, is_elite_daughter=False, is_high_g1=False):
     if is_high_g1:
         score += 20.0
 
-    # 괄호 안의 전적 및 승수 추출 (예: 32전 12승)
     match_record = re.search(r'(\d+)전\s*(\d+)승', text)
     if match_record:
         total_wins = int(match_record.group(2))
@@ -231,7 +229,6 @@ def check_special_condition(text):
     has_g1 = 'G1' in text
     g1_wins = 0
     if has_g1:
-        # G1-12, G1 12, G1승 등 다양한 형태를 폭넓게 매칭하여 고승수 추출
         g1_win_matches = re.findall(r'G1\s*[-]?\s*(\d+)\s*(?:승)?', text)
         if g1_win_matches:
             g1_wins = max([int(x) for x in g1_win_matches])
@@ -271,19 +268,25 @@ def analyze_sire_perspective(root, target_sire_query, id_to_text, id_to_parent_t
 
                 dam_name = "미상"
                 bms_name = "미상"
-                target_dam_id = None
-                if child_id in forward_arrows:
-                    target_dam_id = forward_arrows[child_id][0]
-                elif child_id in backward_arrows:
-                    target_dam_id = backward_arrows[child_id][0]
+                
+                # [수정 반영] 화살표 방향성에 구애받지 않고 연결된 후보군에서 유효한 모마(암말)를 정밀 탐색
+                candidate_ids = []
+                if child_id:
+                    candidate_ids.extend(forward_arrows.get(child_id, []))
+                    candidate_ids.extend(backward_arrows.get(child_id, []))
 
-                if target_dam_id and target_dam_id in id_to_text:
-                    potential_dam = id_to_text[target_dam_id]
-                    if query_norm not in normalize_name(potential_dam) and is_valid_mare(potential_dam):
-                        dam_name = potential_dam
-                        potential_bms = id_to_parent_text.get(target_dam_id, "미상")
-                        if potential_bms and potential_bms != "Unknown" and query_norm not in normalize_name(potential_bms):
-                            bms_name = potential_bms
+                target_dam_id = None
+                for cid in candidate_ids:
+                    p_text = id_to_text.get(cid, "")
+                    if query_norm not in normalize_name(p_text) and is_valid_mare(p_text):
+                        target_dam_id = cid
+                        dam_name = p_text
+                        break
+
+                if target_dam_id:
+                    potential_bms = id_to_parent_text.get(target_dam_id, "미상")
+                    if potential_bms and potential_bms != "Unknown" and query_norm not in normalize_name(potential_bms):
+                        bms_name = potential_bms
 
                 results.append({
                     'progeny': child_text.strip(),
@@ -667,4 +670,4 @@ else:
                     child_display = f"<span style='font-weight:normal; color:#2C3E50;'>{child_name}</span>"
 
                 st.markdown(f"<div class='progeny-item'>🔗 {badge_h} [연결 자마] {child_display} (부마 정보: {father_display}) — 가중 점수: <b>{score:.1f}점</b></div>", unsafe_allow_html=True)
-                st.markdown(f"<div style='margin-left: 25px;'><div class='gauge-container'><div class='gauge-bar' style='width: {min(score/5, 100)}%;'></div></div></div>", unsafe_allow_html=True) 
+                st.markdown(f"<div style='margin-left: 25px;'><div class='gauge-container'><div class='gauge-bar' style='width: {min(score/5, 100)}%;'></div></div></div>", unsafe_allow_html=True)
